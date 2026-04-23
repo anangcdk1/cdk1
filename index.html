@@ -30,7 +30,6 @@
             box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
         }
 
-        /* NAVIGASI ATAS */
         .nav-section {
             background: transparent;
             margin-bottom: 12px;
@@ -67,7 +66,6 @@
             color: #1a3a1a;
         }
 
-        /* LAYOUT */
         .content-row {
             display: flex;
             gap: 0;
@@ -92,7 +90,6 @@
             display: block;
         }
 
-        /* SIDEBAR POKJA */
         .pokja-sidebar {
             width: 33px;
             background: linear-gradient(135deg, #0d3b4f 0%, #0a2e3f 100%);
@@ -141,7 +138,6 @@
             transform: rotate(90deg);
         }
 
-        /* BAGIAN BAWAH MEDSOS */
         .medsos-section {
             margin-top: 0;
             background: rgba(0, 0, 0, 0.5);
@@ -167,7 +163,6 @@
             transform: translateY(-2px);
         }
 
-        /* LOADING & NOTIF */
         .loading {
             text-align: center;
             padding: 50px;
@@ -257,17 +252,17 @@
 
 <script>
     // ============================================================
-    // KONFIGURASI - GANTI DENGAN ID SHEET ANDA
+    // KONFIGURASI - GANTI DENGAN ID SHEET ASLI ANDA
     // ============================================================
-    const SHEET_ID = '16iACO_haYmDeOFGrMAig-WLiU-n2pVRtnjr8EGkOPg0'; // Ganti dengan ID Google Sheet Anda
+    const SHEET_ID = '16iACO_haYmDeOFGrMAig-WLiU-n2pVRtnjr8EGkOPg0'; // Ganti dengan ID asli Google Sheet Anda
     
-    // GID setiap sheet (default: sheet pertama gid=0, kedua gid=1)
+    // GID setiap sheet (sheet pertama gid=0, kedua gid=1)
     const SHEET_GID = {
         page: '0',   // sheet "page"
         klik: '1'    // sheet "klik"
     };
     
-    // MEDSOS - HARDCODE (tidak dari sheet)
+    // MEDSOS - HARDCODE
     const MEDSOS = [
         { icon: "📷", label: "Instagram", url: "https://instagram.com/cdk1blora", color: "#E4405F" },
         { icon: "🎵", label: "TikTok", url: "https://tiktok.com/@cdk1blora", color: "#000000" },
@@ -275,30 +270,49 @@
         { icon: "🐦", label: "Twitter", url: "https://twitter.com/cdk1blora", color: "#1DA1F2" }
     ];
     
-    // State
-    let pagesData = [];      // data dari sheet page
-    let klikData = [];       // data dari sheet klik
+    let pagesData = [];
+    let klikData = [];
     let currentPageId = 'index';
     
     // ============================================================
-    // FUNGSI BACA GOOGLE SHEET
+    // FUNGSI BACA GOOGLE SHEET DENGAN PROXY CORS
     // ============================================================
     async function fetchSheetAsCSV(gid) {
-        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        // URL CSV dari Google Sheet
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+        
+        // Gunakan proxy CORS gratis
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(csvUrl)}`;
+        
         try {
+            console.log(`🔄 Fetching sheet gid ${gid}...`);
             const response = await fetch(proxyUrl);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const csvText = await response.text();
+            console.log(`✅ Sheet gid ${gid} loaded, length: ${csvText.length}`);
+            
+            if (csvText.length === 0) {
+                console.warn(`⚠️ Sheet gid ${gid} is empty`);
+                return [];
+            }
+            
             return parseCSV(csvText);
         } catch (error) {
-            console.error(`Error fetching sheet gid ${gid}:`, error);
+            console.error(`❌ Error fetching sheet gid ${gid}:`, error);
             return [];
         }
     }
     
     function parseCSV(csvText) {
         const rows = csvText.trim().split('\n');
-        if (rows.length < 2) return [];
+        if (rows.length < 2) {
+            console.warn('CSV has less than 2 rows');
+            return [];
+        }
         
         const headers = rows[0].split(',').map(h => h.replace(/"/g, '').trim());
         const result = [];
@@ -311,11 +325,16 @@
             });
             result.push(obj);
         }
+        
+        console.log(`📊 Parsed ${result.length} rows from CSV`);
         return result;
     }
     
     async function loadAllData() {
         try {
+            console.log('🔄 Loading data from Google Sheet...');
+            console.log(`📋 Sheet ID: ${SHEET_ID}`);
+            
             const [pageRaw, klikRaw] = await Promise.all([
                 fetchSheetAsCSV(SHEET_GID.page),
                 fetchSheetAsCSV(SHEET_GID.klik)
@@ -324,11 +343,17 @@
             pagesData = pageRaw;
             klikData = klikRaw;
             
-            console.log('✅ Pages loaded:', pagesData.length);
-            console.log('✅ Klik areas loaded:', klikData.length);
+            console.log(`✅ Pages loaded: ${pagesData.length} rows`);
+            console.log(`✅ Klik areas loaded: ${klikData.length} rows`);
+            
+            if (pagesData.length === 0) {
+                console.error('❌ No data in "page" sheet. Please check your sheet.');
+                return false;
+            }
+            
             return true;
         } catch (error) {
-            console.error('Error loading data:', error);
+            console.error('❌ Error loading data:', error);
             return false;
         }
     }
@@ -361,7 +386,7 @@
     }
     
     // ============================================================
-    // FUNGSI MEMBUAT AREA KLIK (dari sheet "klik")
+    // FUNGSI MEMBUAT AREA KLIK
     // ============================================================
     function createClickableAreas(pageId, imgElement, mapElement) {
         if (!imgElement || !mapElement) return;
@@ -373,7 +398,6 @@
         const currentHeight = imgElement.clientHeight;
         if (currentWidth === 0 || currentHeight === 0) return;
         
-        // Ambil ukuran asli dari data page
         const pageInfo = pagesData.find(p => p.page_id === pageId);
         const originalWidth = parseInt(pageInfo?.original_width) || 1512;
         const originalHeight = parseInt(pageInfo?.original_height) || 1023;
@@ -446,20 +470,15 @@
     }
     
     function renderPage() {
-        // Filter menu berdasarkan is_active_top dan is_active_sidebar
         const topMenus = pagesData.filter(p => p.is_active_top === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
         const sideMenus = pagesData.filter(p => p.is_active_sidebar === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
         
-        // Cari data halaman saat ini
         const currentPage = pagesData.find(p => p.page_id === currentPageId);
         if (!currentPage) {
             document.getElementById('app').innerHTML = '<div class="loading">❌ Halaman tidak ditemukan</div>';
             return;
         }
         
-        // Tentukan menu atas mana yang aktif
-        // Aturan: Jika currentPage menu_type = 'sidebar' -> aktifkan 'realisasi'
-        //         Jika currentPage menu_type = 'top' -> aktifkan currentPage itu sendiri
         let activeTopId = null;
         if (currentPage.menu_type === 'sidebar') {
             activeTopId = 'realisasi';
@@ -467,7 +486,6 @@
             activeTopId = currentPage.page_id;
         }
         
-        // Tentukan sidebar mana yang aktif
         let activeSideId = null;
         if (currentPage.menu_type === 'sidebar') {
             activeSideId = currentPage.page_id;
@@ -475,7 +493,6 @@
             activeSideId = null;
         }
         
-        // Render HTML
         const html = `
             <div class="nav-section">
                 <div class="page-nav">
@@ -512,7 +529,6 @@
         
         document.getElementById('app').innerHTML = html;
         
-        // Attach event ke menu atas
         document.querySelectorAll('.page-nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -524,7 +540,6 @@
             });
         });
         
-        // Attach event ke sidebar
         document.querySelectorAll('.pokja-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -536,7 +551,6 @@
             });
         });
         
-        // Load gambar dan buat area klik
         const img = document.getElementById('mainImage');
         const mapEl = document.getElementById('dynamicMap');
         
@@ -550,7 +564,6 @@
             });
         }
         
-        // Resize handler
         window.addEventListener('resize', () => {
             setTimeout(() => {
                 createClickableAreas(currentPageId, img, mapEl);
@@ -563,11 +576,17 @@
     // INITIALIZATION
     // ============================================================
     async function init() {
+        console.log('🚀 Initializing website...');
         const success = await loadAllData();
         if (success && pagesData.length > 0) {
             renderPage();
         } else {
-            document.getElementById('app').innerHTML = '<div class="loading">❌ Gagal memuat data. Periksa koneksi dan konfigurasi Sheet ID.</div>';
+            let errorMsg = '❌ Gagal memuat data. Periksa:<br><br>';
+            errorMsg += '1. <b>Sheet ID</b> sudah benar?<br>';
+            errorMsg += '2. <b>Sheet sudah dipublish?</b> (File → Share → Publish to web)<br>';
+            errorMsg += '3. <b>Sheet "page"</b> sudah diisi minimal 1 baris?<br>';
+            errorMsg += '4. Buka Console (F12) untuk detail error.';
+            document.getElementById('app').innerHTML = `<div class="loading">${errorMsg}</div>`;
         }
     }
     
