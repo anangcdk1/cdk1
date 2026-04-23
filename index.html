@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>CDK I Blora 2026</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #2d4a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+
+        .main-wrapper {
+            max-width: 1600px;
+            width: 100%;
+            background: #1a3a1a;
+            border-radius: 20px;
+            padding: 10px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+
+        /* NAVIGASI ATAS */
+        .nav-section {
+            background: transparent;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: flex-start;
+            padding: 0 4px;
+        }
+
+        .page-nav {
+            display: flex;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(10px);
+            padding: 6px 20px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            flex-wrap: wrap;
+        }
+
+        .page-nav a {
+            background: transparent;
+            color: #e0e0e0;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 6px 16px;
+            border-radius: 30px;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+
+        .page-nav a:hover, .page-nav a.active {
+            background: #ffd700;
+            color: #1a3a1a;
+        }
+
+        /* LAYOUT */
+        .content-row {
+            display: flex;
+            gap: 0;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
+        .image-wrapper {
+            flex: 1;
+            min-width: 300px;
+            position: relative;
+            background: #e8f0e3;
+            border-radius: 16px 0 0 16px;
+            overflow: hidden;
+            text-align: center;
+            line-height: 0;
+        }
+
+        .image-wrapper img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* SIDEBAR POKJA */
+        .pokja-sidebar {
+            width: 33px;
+            background: linear-gradient(135deg, #0d3b4f 0%, #0a2e3f 100%);
+            border-radius: 0 16px 16px 0;
+            border-left: 2px solid #00bcd4;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pokja-list {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .pokja-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 188, 212, 0.15);
+            color: #b2ebf2;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            cursor: pointer;
+            flex: 1;
+            min-height: 60px;
+        }
+
+        .pokja-btn:not(:last-child) {
+            border-bottom: 1px solid rgba(0, 188, 212, 0.35);
+        }
+
+        .pokja-btn:hover, .pokja-btn.active {
+            background: #ffd700;
+            color: #1a3a1a;
+        }
+
+        .horizontal-text {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            transform: rotate(90deg);
+        }
+
+        /* BAGIAN BAWAH MEDSOS */
+        .medsos-section {
+            margin-top: 0;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 0 0 16px 16px;
+            padding: 8px 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .medsos-icon {
+            display: inline-block;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 30px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        .medsos-icon:hover {
+            background: #ffd700;
+            color: #1a3a1a;
+            transform: translateY(-2px);
+        }
+
+        /* LOADING & NOTIF */
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+        }
+        .toast-notif {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            z-index: 1000;
+            animation: fadeInOut 2.5s ease forwards;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            max-width: 400px;
+            text-align: center;
+        }
+        .modal-content button {
+            margin-top: 16px;
+            padding: 8px 24px;
+            background: #2d4a2e;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 850px) {
+            .content-row { flex-direction: column; }
+            .image-wrapper { border-radius: 16px 16px 0 0; }
+            .pokja-sidebar {
+                width: 100%;
+                border-radius: 0 0 16px 16px;
+                border-left: none;
+                border-top: 2px solid #00bcd4;
+            }
+            .pokja-list {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 12px;
+                padding: 16px;
+            }
+            .horizontal-text {
+                transform: rotate(0deg);
+                padding: 8px 12px;
+            }
+            .pokja-btn {
+                min-height: auto;
+                background: rgba(0, 188, 212, 0.25);
+                border-radius: 30px;
+            }
+            .pokja-btn:not(:last-child) { border-bottom: none; }
+            .medsos-section { flex-wrap: wrap; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+<div class="main-wrapper" id="app">
+    <div class="loading">⏳ Memuat data dari Google Sheet...</div>
+</div>
+
+<script>
+    // ============================================================
+    // KONFIGURASI - GANTI DENGAN ID SHEET ANDA
+    // ============================================================
+    const SHEET_ID = '16iACO_haYmDeOFGrMAig-WLiU-n2pVRtnjr8EGkOPg0'; // Ganti dengan ID Google Sheet Anda
+    
+    // GID setiap sheet (default: sheet pertama gid=0, kedua gid=1)
+    const SHEET_GID = {
+        page: '0',   // sheet "page"
+        klik: '1'    // sheet "klik"
+    };
+    
+    // MEDSOS - HARDCODE (tidak dari sheet)
+    const MEDSOS = [
+        { icon: "📷", label: "Instagram", url: "https://instagram.com/cdk1blora", color: "#E4405F" },
+        { icon: "🎵", label: "TikTok", url: "https://tiktok.com/@cdk1blora", color: "#000000" },
+        { icon: "👍", label: "Facebook", url: "https://facebook.com/cdk1blora", color: "#1877F2" },
+        { icon: "🐦", label: "Twitter", url: "https://twitter.com/cdk1blora", color: "#1DA1F2" }
+    ];
+    
+    // State
+    let pagesData = [];      // data dari sheet page
+    let klikData = [];       // data dari sheet klik
+    let currentPageId = 'index';
+    
+    // ============================================================
+    // FUNGSI BACA GOOGLE SHEET
+    // ============================================================
+    async function fetchSheetAsCSV(gid) {
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        try {
+            const response = await fetch(proxyUrl);
+            const csvText = await response.text();
+            return parseCSV(csvText);
+        } catch (error) {
+            console.error(`Error fetching sheet gid ${gid}:`, error);
+            return [];
+        }
+    }
+    
+    function parseCSV(csvText) {
+        const rows = csvText.trim().split('\n');
+        if (rows.length < 2) return [];
+        
+        const headers = rows[0].split(',').map(h => h.replace(/"/g, '').trim());
+        const result = [];
+        
+        for (let i = 1; i < rows.length; i++) {
+            const values = rows[i].split(',').map(v => v.replace(/"/g, '').trim());
+            const obj = {};
+            headers.forEach((header, idx) => {
+                obj[header] = values[idx] || '';
+            });
+            result.push(obj);
+        }
+        return result;
+    }
+    
+    async function loadAllData() {
+        try {
+            const [pageRaw, klikRaw] = await Promise.all([
+                fetchSheetAsCSV(SHEET_GID.page),
+                fetchSheetAsCSV(SHEET_GID.klik)
+            ]);
+            
+            pagesData = pageRaw;
+            klikData = klikRaw;
+            
+            console.log('✅ Pages loaded:', pagesData.length);
+            console.log('✅ Klik areas loaded:', klikData.length);
+            return true;
+        } catch (error) {
+            console.error('Error loading data:', error);
+            return false;
+        }
+    }
+    
+    // ============================================================
+    // FUNGSI UTILITY
+    // ============================================================
+    function showToast(message) {
+        let existing = document.querySelector('.toast-notif');
+        if (existing) existing.remove();
+        
+        const toast = document.createElement('div');
+        toast.className = 'toast-notif';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2500);
+    }
+    
+    function showModal(content) {
+        let existing = document.querySelector('.modal-overlay');
+        if (existing) existing.remove();
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `<div class="modal-content"><p>${content}</p><button onclick="this.closest('.modal-overlay').remove()">Tutup</button></div>`;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+    }
+    
+    // ============================================================
+    // FUNGSI MEMBUAT AREA KLIK (dari sheet "klik")
+    // ============================================================
+    function createClickableAreas(pageId, imgElement, mapElement) {
+        if (!imgElement || !mapElement) return;
+        
+        const areasForPage = klikData.filter(area => area.page_id === pageId && area.is_active === 'TRUE');
+        if (areasForPage.length === 0) return;
+        
+        const currentWidth = imgElement.clientWidth;
+        const currentHeight = imgElement.clientHeight;
+        if (currentWidth === 0 || currentHeight === 0) return;
+        
+        // Ambil ukuran asli dari data page
+        const pageInfo = pagesData.find(p => p.page_id === pageId);
+        const originalWidth = parseInt(pageInfo?.original_width) || 1512;
+        const originalHeight = parseInt(pageInfo?.original_height) || 1023;
+        const scaleX = currentWidth / originalWidth;
+        const scaleY = currentHeight / originalHeight;
+        
+        mapElement.innerHTML = '';
+        
+        areasForPage.forEach(area => {
+            const coordsParts = area.coords.split(',').map(Number);
+            let scaledCoords = '';
+            
+            switch(area.shape) {
+                case 'rect':
+                    if (coordsParts.length === 4) {
+                        scaledCoords = `${Math.round(coordsParts[0] * scaleX)},${Math.round(coordsParts[1] * scaleY)},${Math.round(coordsParts[2] * scaleX)},${Math.round(coordsParts[3] * scaleY)}`;
+                    }
+                    break;
+                case 'circle':
+                    if (coordsParts.length === 3) {
+                        scaledCoords = `${Math.round(coordsParts[0] * scaleX)},${Math.round(coordsParts[1] * scaleY)},${Math.round(coordsParts[2] * Math.min(scaleX, scaleY))}`;
+                    }
+                    break;
+                case 'poly':
+                    const scaledPoints = [];
+                    for (let i = 0; i < coordsParts.length; i += 2) {
+                        if (i + 1 < coordsParts.length) {
+                            scaledPoints.push(Math.round(coordsParts[i] * scaleX));
+                            scaledPoints.push(Math.round(coordsParts[i+1] * scaleY));
+                        }
+                    }
+                    scaledCoords = scaledPoints.join(',');
+                    break;
+                default:
+                    return;
+            }
+            
+            const areaElement = document.createElement('area');
+            areaElement.setAttribute('shape', area.shape);
+            areaElement.setAttribute('coords', scaledCoords);
+            areaElement.setAttribute('title', area.title);
+            areaElement.setAttribute('alt', area.title);
+            
+            const clickEffect = area.click_effect || 'toast';
+            const popupMessage = area.popup_message || area.title;
+            
+            areaElement.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (clickEffect === 'toast') {
+                    showToast(popupMessage);
+                } else if (clickEffect === 'modal') {
+                    showModal(popupMessage);
+                }
+            });
+            
+            mapElement.appendChild(areaElement);
+        });
+        
+        imgElement.setAttribute('usemap', '#dynamicMap');
+    }
+    
+    // ============================================================
+    // FUNGSI RENDER HALAMAN
+    // ============================================================
+    function setSidebarHeight(imgElement) {
+        const sidebar = document.getElementById('pokjaSidebar');
+        if (sidebar && imgElement && imgElement.clientHeight > 0) {
+            sidebar.style.height = imgElement.clientHeight + 'px';
+        }
+    }
+    
+    function renderPage() {
+        // Filter menu berdasarkan is_active_top dan is_active_sidebar
+        const topMenus = pagesData.filter(p => p.is_active_top === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
+        const sideMenus = pagesData.filter(p => p.is_active_sidebar === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
+        
+        // Cari data halaman saat ini
+        const currentPage = pagesData.find(p => p.page_id === currentPageId);
+        if (!currentPage) {
+            document.getElementById('app').innerHTML = '<div class="loading">❌ Halaman tidak ditemukan</div>';
+            return;
+        }
+        
+        // Tentukan menu atas mana yang aktif
+        // Aturan: Jika currentPage menu_type = 'sidebar' -> aktifkan 'realisasi'
+        //         Jika currentPage menu_type = 'top' -> aktifkan currentPage itu sendiri
+        let activeTopId = null;
+        if (currentPage.menu_type === 'sidebar') {
+            activeTopId = 'realisasi';
+        } else {
+            activeTopId = currentPage.page_id;
+        }
+        
+        // Tentukan sidebar mana yang aktif
+        let activeSideId = null;
+        if (currentPage.menu_type === 'sidebar') {
+            activeSideId = currentPage.page_id;
+        } else {
+            activeSideId = null;
+        }
+        
+        // Render HTML
+        const html = `
+            <div class="nav-section">
+                <div class="page-nav">
+                    ${topMenus.map(menu => `
+                        <a data-page="${menu.page_id}" class="${activeTopId === menu.page_id ? 'active' : ''}">
+                            ${menu.label_menu}
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="content-row">
+                <div class="image-wrapper">
+                    <img src="${currentPage.image_url}" alt="${currentPage.title}" id="mainImage">
+                    <map name="dynamicMap" id="dynamicMap"></map>
+                </div>
+                <div class="pokja-sidebar" id="pokjaSidebar">
+                    <div class="pokja-list">
+                        ${sideMenus.map(menu => `
+                            <div class="pokja-btn ${activeSideId === menu.page_id ? 'active' : ''}" data-page="${menu.page_id}">
+                                <div class="horizontal-text">${menu.label_menu}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            <div class="medsos-section">
+                ${MEDSOS.map(medsos => `
+                    <a href="${medsos.url}" target="_blank" class="medsos-icon" style="background: ${medsos.color}20; border: 1px solid ${medsos.color}">
+                        ${medsos.icon} ${medsos.label}
+                    </a>
+                `).join('')}
+            </div>
+        `;
+        
+        document.getElementById('app').innerHTML = html;
+        
+        // Attach event ke menu atas
+        document.querySelectorAll('.page-nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = link.getAttribute('data-page');
+                if (pageId) {
+                    currentPageId = pageId;
+                    renderPage();
+                }
+            });
+        });
+        
+        // Attach event ke sidebar
+        document.querySelectorAll('.pokja-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = btn.getAttribute('data-page');
+                if (pageId) {
+                    currentPageId = pageId;
+                    renderPage();
+                }
+            });
+        });
+        
+        // Load gambar dan buat area klik
+        const img = document.getElementById('mainImage');
+        const mapEl = document.getElementById('dynamicMap');
+        
+        if (img.complete && img.naturalHeight !== 0) {
+            createClickableAreas(currentPageId, img, mapEl);
+            setSidebarHeight(img);
+        } else {
+            img.addEventListener('load', () => {
+                createClickableAreas(currentPageId, img, mapEl);
+                setSidebarHeight(img);
+            });
+        }
+        
+        // Resize handler
+        window.addEventListener('resize', () => {
+            setTimeout(() => {
+                createClickableAreas(currentPageId, img, mapEl);
+                setSidebarHeight(img);
+            }, 100);
+        });
+    }
+    
+    // ============================================================
+    // INITIALIZATION
+    // ============================================================
+    async function init() {
+        const success = await loadAllData();
+        if (success && pagesData.length > 0) {
+            renderPage();
+        } else {
+            document.getElementById('app').innerHTML = '<div class="loading">❌ Gagal memuat data. Periksa koneksi dan konfigurasi Sheet ID.</div>';
+        }
+    }
+    
+    init();
+</script>
+</body>
+</html>
