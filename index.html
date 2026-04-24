@@ -273,17 +273,14 @@
     let currentPageId = 'index';
     
     // ============================================================
-    // FUNGSI BACA GOOGLE SHEET DENGAN PROXY (cors-anywhere)
+    // FUNGSI BACA GOOGLE SHEET DENGAN PROXY
     // ============================================================
     async function fetchSheetAsCSV(gid) {
         const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
-        
-        // Gunakan cors-anywhere (lebih stabil)
         const proxyUrl = `https://cors-anywhere.herokuapp.com/${csvUrl}`;
         
         try {
             console.log(`🔄 Fetching sheet gid ${gid}...`);
-            console.log(`📡 Proxy URL: ${proxyUrl.substring(0, 100)}...`);
             
             const response = await fetch(proxyUrl, {
                 method: 'GET',
@@ -356,7 +353,6 @@
             
             if (pagesData.length === 0) {
                 console.error('❌ No data in "page" sheet.');
-                console.error('   Pastikan sheet "page" sudah diisi dan dipublish sebagai CSV');
                 return false;
             }
             
@@ -478,6 +474,17 @@
         }
     }
     
+    // Fungsi untuk mengubah image_id menjadi direct link Google Drive
+    function getImageUrl(imageId) {
+        if (!imageId) return '';
+        // Jika sudah berupa URL lengkap, kembalikan apa adanya
+        if (imageId.startsWith('http://') || imageId.startsWith('https://')) {
+            return imageId;
+        }
+        // Jika hanya ID, buat direct link Google Drive
+        return `https://drive.google.com/uc?export=view&id=${imageId}`;
+    }
+    
     function renderPage() {
         const topMenus = pagesData.filter(p => p.is_active_top === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
         const sideMenus = pagesData.filter(p => p.is_active_sidebar === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
@@ -487,6 +494,9 @@
             document.getElementById('app').innerHTML = '<div class="loading">❌ Halaman tidak ditemukan</div>';
             return;
         }
+        
+        // Gunakan fungsi getImageUrl untuk mendapatkan URL gambar
+        const imageUrl = getImageUrl(currentPage.image_id || currentPage.image_url);
         
         let activeTopId = null;
         if (currentPage.menu_type === 'sidebar') {
@@ -514,7 +524,7 @@
             </div>
             <div class="content-row">
                 <div class="image-wrapper">
-                    <img src="${currentPage.image_url}" alt="${currentPage.title}" id="mainImage">
+                    <img src="${imageUrl}" alt="${currentPage.title}" id="mainImage">
                     <map name="dynamicMap" id="dynamicMap"></map>
                 </div>
                 <div class="pokja-sidebar" id="pokjaSidebar">
@@ -593,7 +603,7 @@
             let errorMsg = '❌ Gagal memuat data. Periksa:<br><br>';
             errorMsg += '1. <b>Sheet sudah dipublish?</b> (File → Share → Publish to web → CSV)<br>';
             errorMsg += '2. <b>Sheet "page"</b> sudah diisi minimal 1 baris?<br>';
-            errorMsg += '3. <b>CORS Anywhere</b> mungkin perlu aktivasi: buka link di bawah dulu<br>';
+            errorMsg += '3. <b>CORS Anywhere</b> perlu aktivasi: buka link di bawah dulu<br>';
             errorMsg += '<a href="https://cors-anywhere.herokuapp.com/" target="_blank" style="color:#ffd700;">👉 Klik di sini untuk aktivasi CORS Anywhere</a>';
             document.getElementById('app').innerHTML = `<div class="loading">${errorMsg}</div>`;
         }
