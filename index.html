@@ -273,35 +273,66 @@
     let currentPageId = 'index';
     
     // ============================================================
-    // FUNGSI BACA GOOGLE SHEET MENGGUNAKAN OPENSHEET
+    // FUNGSI BACA GOOGLE SHEET DENGAN PROXY
     // ============================================================
-    async function fetchSheetAsJSON(gid) {
-        // Gunakan opensheet.elk.sh (gratis, tanpa CORS issues)
-        const url = `https://opensheet.elk.sh/${SHEET_ID}/${gid}`;
+    async function fetchSheetAsCSV(gid) {
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+        const proxyUrl = `https://cors-anywhere.herokuapp.com/${csvUrl}`;
         
         try {
-            console.log(`🔄 Fetching sheet gid ${gid} from: ${url}`);
+            console.log(`🔄 Fetching sheet gid ${gid}...`);
             
-            const response = await fetch(url);
+            const response = await fetch(proxyUrl, {
+                method: 'GET',
+                headers: {
+                    'Origin': 'https://anangcdk1.github.io',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            const data = await response.json();
-            console.log(`✅ Sheet gid ${gid} loaded, rows: ${data.length}`);
+            const csvText = await response.text();
+            console.log(`✅ Sheet gid ${gid} loaded, length: ${csvText.length}`);
             
-            if (data.length === 0) {
-                console.warn(`⚠️ Sheet gid ${gid} is empty`);
+            if (csvText.length === 0 || csvText.includes('<html>') || csvText.includes('DOCTYPE')) {
+                console.warn(`⚠️ Sheet gid ${gid} returned HTML instead of CSV`);
                 return [];
             }
             
-            console.log(`📋 First row sample:`, data[0]);
-            return data;
+            return parseCSV(csvText);
         } catch (error) {
             console.error(`❌ Error fetching sheet gid ${gid}:`, error);
             return [];
         }
+    }
+    
+    function parseCSV(csvText) {
+        const rows = csvText.trim().split('\n');
+        if (rows.length < 2) {
+            console.warn('CSV has less than 2 rows');
+            return [];
+        }
+        
+        const headers = rows[0].split(',').map(h => h.replace(/"/g, '').trim());
+        const result = [];
+        
+        for (let i = 1; i < rows.length; i++) {
+            const values = rows[i].split(',').map(v => v.replace(/"/g, '').trim());
+            const obj = {};
+            headers.forEach((header, idx) => {
+                obj[header] = values[idx] || '';
+            });
+            result.push(obj);
+        }
+        
+        console.log(`📊 Parsed ${result.length} rows from CSV`);
+        if (result.length > 0) {
+            console.log(`📋 First row:`, result[0]);
+        }
+        return result;
     }
     
     async function loadAllData() {
@@ -310,8 +341,8 @@
             console.log(`📋 Sheet ID: ${SHEET_ID}`);
             
             const [pageRaw, klikRaw] = await Promise.all([
-                fetchSheetAsJSON(SHEET_GID.page),
-                fetchSheetAsJSON(SHEET_GID.klik)
+                fetchSheetAsCSV(SHEET_GID.page),
+                fetchSheetAsCSV(SHEET_GID.klik)
             ]);
             
             pagesData = pageRaw;
@@ -324,10 +355,6 @@
                 console.error('❌ No data in "page" sheet.');
                 return false;
             }
-            
-            // Tampilkan data halaman pertama untuk debugging
-            console.log('Sample page data:', pagesData[0]);
-            console.log('Available columns in page:', Object.keys(pagesData[0]));
             
             return true;
         } catch (error) {
@@ -447,52 +474,20 @@
         }
     }
     
-    // Fungsi untuk mendapatkan URL gambar dari Google Drive
-    function getImageUrl(imageValue) {
-        if (!imageValue) {
-            console.warn('No image value provided');
-            return 'https://via.placeholder.com/800x600?text=No+Image';
+    // Fungsi untuk mengubah image_id menjadi direct link Google Drive
+    function getImageUrl(imageId) {
+        if (!imageId) return '';
+        // Jika sudah berupa URL lengkap, kembalikan apa adanya
+        if (imageId.startsWith('http://') || imageId.startsWith('https://')) {
+            return imageId;
         }
-        
-        console.log('Processing image value:', imageValue);
-        
-        // Jika sudah berupa URL lengkap
-        if (imageValue.startsWith('http://') || imageValue.startsWith('https://')) {
-            // Handle berbagai format Google Drive URL
-            if (imageValue.includes('drive.google.com')) {
-                // Format: https://drive.google.com/file/d/FILE_ID/view
-                const match = imageValue.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                if (match) {
-                    const directUrl = `https://drive.google.com/uc?export=view&id=${match[1]}`;
-                    console.log('Converted Google Drive URL to:', directUrl);
-                    return directUrl;
-                }
-                // Format: https://drive.google.com/uc?id=FILE_ID
-                const idMatch = imageValue.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-                if (idMatch) {
-                    const directUrl = `https://drive.google.com/uc?export=view&id=${idMatch[1]}`;
-                    console.log('Extracted ID from URL:', directUrl);
-                    return directUrl;
-                }
-            }
-            return imageValue;
-        }
-        
-        // Jika hanya ID file (tanpa protocol)
-        if (imageValue.match(/^[a-zA-Z0-9_-]+$/)) {
-            const directUrl = `https://drive.google.com/uc?export=view&id=${imageValue}`;
-            console.log('Using file ID as:', directUrl);
-            return directUrl;
-        }
-        
-        // Fallback
-        console.warn('Unable to process image value, using placeholder');
-        return 'https://via.placeholder.com/800x600?text=Invalid+Image+URL';
+        // Jika hanya ID, buat direct link Google Drive
+        return `https://drive.google.com/uc?export=view&id=${imageId}`;
     }
     
     function renderPage() {
-        const topMenus = pagesData.filter(p => p.is_active_top === 'TRUE').sort((a,b) => (parseInt(a.order) || 0) - (parseInt(b.order) || 0));
-        const sideMenus = pagesData.filter(p => p.is_active_sidebar === 'TRUE').sort((a,b) => (parseInt(a.order) || 0) - (parseInt(b.order) || 0));
+        const topMenus = pagesData.filter(p => p.is_active_top === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
+        const sideMenus = pagesData.filter(p => p.is_active_sidebar === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
         
         const currentPage = pagesData.find(p => p.page_id === currentPageId);
         if (!currentPage) {
@@ -500,12 +495,8 @@
             return;
         }
         
-        // Cek kolom mana yang tersedia untuk gambar
-        const imageValue = currentPage.image_id || currentPage.image_url || currentPage.gambar || '';
-        const imageUrl = getImageUrl(imageValue);
-        
-        console.log(`Rendering page: ${currentPageId}`);
-        console.log(`Image URL: ${imageUrl}`);
+        // Gunakan fungsi getImageUrl untuk mendapatkan URL gambar
+        const imageUrl = getImageUrl(currentPage.image_id || currentPage.image_url);
         
         let activeTopId = null;
         if (currentPage.menu_type === 'sidebar') {
@@ -526,22 +517,21 @@
                 <div class="page-nav">
                     ${topMenus.map(menu => `
                         <a data-page="${menu.page_id}" class="${activeTopId === menu.page_id ? 'active' : ''}">
-                            ${menu.label_menu || menu.page_id}
+                            ${menu.label_menu}
                         </a>
                     `).join('')}
                 </div>
             </div>
             <div class="content-row">
                 <div class="image-wrapper">
-                    <img src="${imageUrl}" alt="${currentPage.title || currentPage.page_id}" id="mainImage" 
-                         onerror="this.onerror=null; this.src='https://via.placeholder.com/800x600?text=Gambar+Gagal+Dimuat'">
+                    <img src="${imageUrl}" alt="${currentPage.title}" id="mainImage">
                     <map name="dynamicMap" id="dynamicMap"></map>
                 </div>
                 <div class="pokja-sidebar" id="pokjaSidebar">
                     <div class="pokja-list">
                         ${sideMenus.map(menu => `
                             <div class="pokja-btn ${activeSideId === menu.page_id ? 'active' : ''}" data-page="${menu.page_id}">
-                                <div class="horizontal-text">${menu.label_menu || menu.page_id}</div>
+                                <div class="horizontal-text">${menu.label_menu}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -558,7 +548,6 @@
         
         document.getElementById('app').innerHTML = html;
         
-        // Event listeners untuk top menu
         document.querySelectorAll('.page-nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -570,7 +559,6 @@
             });
         });
         
-        // Event listeners untuk sidebar menu
         document.querySelectorAll('.pokja-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -590,13 +578,8 @@
             setSidebarHeight(img);
         } else {
             img.addEventListener('load', () => {
-                console.log('Image loaded successfully');
                 createClickableAreas(currentPageId, img, mapEl);
                 setSidebarHeight(img);
-            });
-            img.addEventListener('error', (e) => {
-                console.error('Gambar gagal dimuat:', imageUrl);
-                console.error('Error event:', e);
             });
         }
         
@@ -615,15 +598,13 @@
         console.log('🚀 Initializing website...');
         const success = await loadAllData();
         if (success && pagesData.length > 0) {
-            console.log('Data loaded successfully, rendering page...');
             renderPage();
         } else {
-            let errorMsg = '❌ Gagal memuat data. Pastikan:<br><br>';
-            errorMsg += '1. <b>Sheet sudah dipublish</b> (File → Share → Publish to web)<br>';
-            errorMsg += '2. <b>Sheet "page"</b> sudah diisi minimal 1 baris data<br>';
-            errorMsg += '3. <b>Kolom image_id</b> berisi ID file Google Drive yang valid<br>';
-            errorMsg += '4. <b>File gambar di Google Drive</b> sudah di-set ke "Anyone with the link can view"<br><br>';
-            errorMsg += '📋 <b>Catatan:</b> Pastikan kolom di sheet Anda menggunakan nama: page_id, image_id, label_menu, dll.';
+            let errorMsg = '❌ Gagal memuat data. Periksa:<br><br>';
+            errorMsg += '1. <b>Sheet sudah dipublish?</b> (File → Share → Publish to web → CSV)<br>';
+            errorMsg += '2. <b>Sheet "page"</b> sudah diisi minimal 1 baris?<br>';
+            errorMsg += '3. <b>CORS Anywhere</b> perlu aktivasi: buka link di bawah dulu<br>';
+            errorMsg += '<a href="https://cors-anywhere.herokuapp.com/" target="_blank" style="color:#ffd700;">👉 Klik di sini untuk aktivasi CORS Anywhere</a>';
             document.getElementById('app').innerHTML = `<div class="loading">${errorMsg}</div>`;
         }
     }
