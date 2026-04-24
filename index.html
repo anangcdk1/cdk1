@@ -273,22 +273,15 @@
     let currentPageId = 'index';
     
     // ============================================================
-    // FUNGSI BACA GOOGLE SHEET DENGAN PROXY
+    // FUNGSI BACA GOOGLE SHEET TANPA CORS (menggunakan gviz/tq)
     // ============================================================
     async function fetchSheetAsCSV(gid) {
-        const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
-        const proxyUrl = `https://cors-anywhere.herokuapp.com/${csvUrl}`;
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
         
         try {
             console.log(`🔄 Fetching sheet gid ${gid}...`);
             
-            const response = await fetch(proxyUrl, {
-                method: 'GET',
-                headers: {
-                    'Origin': 'https://anangcdk1.github.io',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
+            const response = await fetch(url);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -310,29 +303,66 @@
     }
     
     function parseCSV(csvText) {
-        const rows = csvText.trim().split('\n');
-        if (rows.length < 2) {
+        // Handle quotes and commas properly
+        const rows = [];
+        const lines = csvText.split('\n');
+        
+        if (lines.length < 2) {
             console.warn('CSV has less than 2 rows');
             return [];
         }
         
-        const headers = rows[0].split(',').map(h => h.replace(/"/g, '').trim());
-        const result = [];
+        // Parse headers (first line)
+        const headers = [];
+        let inQuote = false;
+        let currentHeader = '';
         
-        for (let i = 1; i < rows.length; i++) {
-            const values = rows[i].split(',').map(v => v.replace(/"/g, '').trim());
+        for (let i = 0; i < lines[0].length; i++) {
+            const char = lines[0][i];
+            if (char === '"') {
+                inQuote = !inQuote;
+            } else if (char === ',' && !inQuote) {
+                headers.push(currentHeader.trim().replace(/^"|"$/g, ''));
+                currentHeader = '';
+            } else {
+                currentHeader += char;
+            }
+        }
+        headers.push(currentHeader.trim().replace(/^"|"$/g, ''));
+        
+        // Parse data rows
+        for (let i = 1; i < lines.length; i++) {
+            if (lines[i].trim() === '') continue;
+            
+            const values = [];
+            inQuote = false;
+            let currentValue = '';
+            
+            for (let j = 0; j < lines[i].length; j++) {
+                const char = lines[i][j];
+                if (char === '"') {
+                    inQuote = !inQuote;
+                } else if (char === ',' && !inQuote) {
+                    values.push(currentValue.trim().replace(/^"|"$/g, ''));
+                    currentValue = '';
+                } else {
+                    currentValue += char;
+                }
+            }
+            values.push(currentValue.trim().replace(/^"|"$/g, ''));
+            
             const obj = {};
             headers.forEach((header, idx) => {
                 obj[header] = values[idx] || '';
             });
-            result.push(obj);
+            rows.push(obj);
         }
         
-        console.log(`📊 Parsed ${result.length} rows from CSV`);
-        if (result.length > 0) {
-            console.log(`📋 First row:`, result[0]);
+        console.log(`📊 Parsed ${rows.length} rows from CSV`);
+        if (rows.length > 0) {
+            console.log(`📋 First row:`, rows[0]);
         }
-        return result;
+        return rows;
     }
     
     async function loadAllData() {
@@ -474,15 +504,15 @@
         }
     }
     
-    // Fungsi untuk mengubah image_id menjadi direct link Google Drive
+    // Fungsi untuk mengubah image_id menjadi direct link Google Drive (format baru)
     function getImageUrl(imageId) {
         if (!imageId) return '';
         // Jika sudah berupa URL lengkap, kembalikan apa adanya
         if (imageId.startsWith('http://') || imageId.startsWith('https://')) {
             return imageId;
         }
-        // Jika hanya ID, buat direct link Google Drive
-        return `https://drive.google.com/uc?export=view&id=${imageId}`;
+        // Jika hanya ID, buat direct link Google Drive dengan format lh3
+        return `https://lh3.googleusercontent.com/d/${imageId}`;
     }
     
     function renderPage() {
@@ -573,6 +603,14 @@
         const img = document.getElementById('mainImage');
         const mapEl = document.getElementById('dynamicMap');
         
+        // Error handling untuk gambar yang gagal load
+        img.onerror = function() {
+            console.error(`❌ Gambar gagal dimuat: ${imageUrl}`);
+            this.alt = 'Gambar tidak tersedia';
+            this.style.backgroundColor = '#ccc';
+            this.style.minHeight = '200px';
+        };
+        
         if (img.complete && img.naturalHeight !== 0) {
             createClickableAreas(currentPageId, img, mapEl);
             setSidebarHeight(img);
@@ -603,8 +641,7 @@
             let errorMsg = '❌ Gagal memuat data. Periksa:<br><br>';
             errorMsg += '1. <b>Sheet sudah dipublish?</b> (File → Share → Publish to web → CSV)<br>';
             errorMsg += '2. <b>Sheet "page"</b> sudah diisi minimal 1 baris?<br>';
-            errorMsg += '3. <b>CORS Anywhere</b> perlu aktivasi: buka link di bawah dulu<br>';
-            errorMsg += '<a href="https://cors-anywhere.herokuapp.com/" target="_blank" style="color:#ffd700;">👉 Klik di sini untuk aktivasi CORS Anywhere</a>';
+            errorMsg += '3. <b>Pastikan sheet bisa diakses publik</b><br>';
             document.getElementById('app').innerHTML = `<div class="loading">${errorMsg}</div>`;
         }
     }
