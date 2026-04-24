@@ -138,83 +138,6 @@
             transform: rotate(90deg);
         }
 
-        .medsos-section {
-            margin-top: 0;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 0 0 16px 16px;
-            padding: 8px 0;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-        }
-        .medsos-icon {
-            display: inline-block;
-            padding: 8px 16px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 30px;
-            color: white;
-            text-decoration: none;
-            font-size: 14px;
-            transition: all 0.2s ease;
-        }
-        .medsos-icon:hover {
-            background: #ffd700;
-            color: #1a3a1a;
-            transform: translateY(-2px);
-        }
-
-        .loading {
-            text-align: center;
-            padding: 50px;
-            color: white;
-        }
-        .toast-notif {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.85);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            z-index: 1000;
-            animation: fadeInOut 2.5s ease forwards;
-        }
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
-            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
-            85% { opacity: 1; }
-            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-        .modal-content {
-            background: white;
-            padding: 24px;
-            border-radius: 16px;
-            max-width: 400px;
-            text-align: center;
-        }
-        .modal-content button {
-            margin-top: 16px;
-            padding: 8px 24px;
-            background: #2d4a2e;
-            color: white;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-        }
-
         @media (max-width: 850px) {
             .content-row { flex-direction: column; }
             .image-wrapper { border-radius: 16px 16px 0 0; }
@@ -241,7 +164,6 @@
                 border-radius: 30px;
             }
             .pokja-btn:not(:last-child) { border-bottom: none; }
-            .medsos-section { flex-wrap: wrap; gap: 10px; }
         }
     </style>
 </head>
@@ -261,11 +183,12 @@
         klik: '1'
     };
     
-    const MEDSOS = [
-        { icon: "📷", label: "Instagram", url: "https://instagram.com/cdk1blora", color: "#E4405F" },
-        { icon: "🎵", label: "TikTok", url: "https://tiktok.com/@cdk1blora", color: "#000000" },
-        { icon: "👍", label: "Facebook", url: "https://facebook.com/cdk1blora", color: "#1877F2" },
-        { icon: "🐦", label: "Twitter", url: "https://twitter.com/cdk1blora", color: "#1DA1F2" }
+    // Social Media Links untuk area klik
+    const SOCIAL_MEDIA_AREAS = [
+        { shape: "rect", coords: "339,972,535,1023", title: "Instagram", url: "https://instagram.com/cdk1blora", icon: "📷" },
+        { shape: "rect", coords: "547,971,751,1023", title: "TikTok", url: "https://tiktok.com/@cdk1blora", icon: "🎵" },
+        { shape: "rect", coords: "758,976,985,1022", title: "Facebook", url: "https://facebook.com/cdk1blora", icon: "👍" },
+        { shape: "rect", coords: "1000,976,1205,1023", title: "Twitter", url: "https://twitter.com/cdk1blora", icon: "🐦" }
     ];
     
     let pagesData = [];
@@ -303,7 +226,6 @@
     }
     
     function parseCSV(csvText) {
-        // Handle quotes and commas properly
         const rows = [];
         const lines = csvText.split('\n');
         
@@ -312,8 +234,7 @@
             return [];
         }
         
-        // Parse headers (first line)
-        const headers = [];
+        let headers = [];
         let inQuote = false;
         let currentHeader = '';
         
@@ -330,7 +251,6 @@
         }
         headers.push(currentHeader.trim().replace(/^"|"$/g, ''));
         
-        // Parse data rows
         for (let i = 1; i < lines.length; i++) {
             if (lines[i].trim() === '') continue;
             
@@ -394,40 +314,12 @@
     }
     
     // ============================================================
-    // FUNGSI UTILITY
-    // ============================================================
-    function showToast(message) {
-        let existing = document.querySelector('.toast-notif');
-        if (existing) existing.remove();
-        
-        const toast = document.createElement('div');
-        toast.className = 'toast-notif';
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 2500);
-    }
-    
-    function showModal(content) {
-        let existing = document.querySelector('.modal-overlay');
-        if (existing) existing.remove();
-        
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.innerHTML = `<div class="modal-content"><p>${content}</p><button onclick="this.closest('.modal-overlay').remove()">Tutup</button></div>`;
-        document.body.appendChild(modal);
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.remove();
-        });
-    }
-    
-    // ============================================================
     // FUNGSI MEMBUAT AREA KLIK
     // ============================================================
     function createClickableAreas(pageId, imgElement, mapElement) {
         if (!imgElement || !mapElement) return;
         
         const areasForPage = klikData.filter(area => area.page_id === pageId && area.is_active === 'TRUE');
-        if (areasForPage.length === 0) return;
         
         const currentWidth = imgElement.clientWidth;
         const currentHeight = imgElement.clientHeight;
@@ -441,6 +333,7 @@
         
         mapElement.innerHTML = '';
         
+        // Area dari Google Sheet (tanpa efek popup)
         areasForPage.forEach(area => {
             const coordsParts = area.coords.split(',').map(Number);
             let scaledCoords = '';
@@ -476,16 +369,35 @@
             areaElement.setAttribute('title', area.title);
             areaElement.setAttribute('alt', area.title);
             
-            const clickEffect = area.click_effect || 'toast';
-            const popupMessage = area.popup_message || area.title;
+            // Hanya navigasi halaman, tanpa toast/modal
+            if (area.target_page && area.target_page !== '') {
+                areaElement.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (pagesData.find(p => p.page_id === area.target_page)) {
+                        currentPageId = area.target_page;
+                        renderPage();
+                    }
+                });
+            }
+            
+            mapElement.appendChild(areaElement);
+        });
+        
+        // Social Media Areas (dengan link ke URL eksternal)
+        SOCIAL_MEDIA_AREAS.forEach(social => {
+            const coordsParts = social.coords.split(',').map(Number);
+            let scaledCoords = `${Math.round(coordsParts[0] * scaleX)},${Math.round(coordsParts[1] * scaleY)},${Math.round(coordsParts[2] * scaleX)},${Math.round(coordsParts[3] * scaleY)}`;
+            
+            const areaElement = document.createElement('area');
+            areaElement.setAttribute('shape', social.shape);
+            areaElement.setAttribute('coords', scaledCoords);
+            areaElement.setAttribute('title', `${social.icon} ${social.title}`);
+            areaElement.setAttribute('alt', social.title);
+            areaElement.setAttribute('target', '_blank');
             
             areaElement.addEventListener('click', (e) => {
                 e.preventDefault();
-                if (clickEffect === 'toast') {
-                    showToast(popupMessage);
-                } else if (clickEffect === 'modal') {
-                    showModal(popupMessage);
-                }
+                window.open(social.url, '_blank');
             });
             
             mapElement.appendChild(areaElement);
@@ -504,14 +416,11 @@
         }
     }
     
-    // Fungsi untuk mengubah image_id menjadi direct link Google Drive (format baru)
     function getImageUrl(imageId) {
         if (!imageId) return '';
-        // Jika sudah berupa URL lengkap, kembalikan apa adanya
         if (imageId.startsWith('http://') || imageId.startsWith('https://')) {
             return imageId;
         }
-        // Jika hanya ID, buat direct link Google Drive dengan format lh3
         return `https://lh3.googleusercontent.com/d/${imageId}`;
     }
     
@@ -525,7 +434,6 @@
             return;
         }
         
-        // Gunakan fungsi getImageUrl untuk mendapatkan URL gambar
         const imageUrl = getImageUrl(currentPage.image_id || currentPage.image_url);
         
         let activeTopId = null;
@@ -567,13 +475,6 @@
                     </div>
                 </div>
             </div>
-            <div class="medsos-section">
-                ${MEDSOS.map(medsos => `
-                    <a href="${medsos.url}" target="_blank" class="medsos-icon" style="background: ${medsos.color}20; border: 1px solid ${medsos.color}">
-                        ${medsos.icon} ${medsos.label}
-                    </a>
-                `).join('')}
-            </div>
         `;
         
         document.getElementById('app').innerHTML = html;
@@ -603,7 +504,6 @@
         const img = document.getElementById('mainImage');
         const mapEl = document.getElementById('dynamicMap');
         
-        // Error handling untuk gambar yang gagal load
         img.onerror = function() {
             console.error(`❌ Gambar gagal dimuat: ${imageUrl}`);
             this.alt = 'Gambar tidak tersedia';
