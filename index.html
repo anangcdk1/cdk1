@@ -252,17 +252,15 @@
 
 <script>
     // ============================================================
-    // KONFIGURASI - GANTI DENGAN ID SHEET ASLI ANDA
+    // KONFIGURASI
     // ============================================================
     const SHEET_ID = '16iACO_haYmDeOFGrMAig-WLiU-n2pVRtnjr8EGkOPg0';
     
-    // GID setiap sheet (sheet pertama gid=0, kedua gid=1)
     const SHEET_GID = {
-        page: '0',   // sheet "page"
-        klik: '1'    // sheet "klik"
+        page: '0',
+        klik: '1'
     };
     
-    // MEDSOS - HARDCODE
     const MEDSOS = [
         { icon: "📷", label: "Instagram", url: "https://instagram.com/cdk1blora", color: "#E4405F" },
         { icon: "🎵", label: "TikTok", url: "https://tiktok.com/@cdk1blora", color: "#000000" },
@@ -275,18 +273,16 @@
     let currentPageId = 'index';
     
     // ============================================================
-    // FUNGSI BACA GOOGLE SHEET DENGAN PROXY CORS (corsproxy.io)
+    // FUNGSI BACA GOOGLE SHEET DENGAN PROXY corsproxy.io
     // ============================================================
     async function fetchSheetAsCSV(gid) {
-        // URL CSV dari Google Sheet
         const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
         
-        // Gunakan proxy corsproxy.io (lebih stabil)
+        // Gunakan corsproxy.io (terbaru)
         const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(csvUrl)}`;
         
         try {
             console.log(`🔄 Fetching sheet gid ${gid}...`);
-            console.log(`📡 Proxy URL: ${proxyUrl.substring(0, 100)}...`);
             
             const response = await fetch(proxyUrl, {
                 method: 'GET',
@@ -302,7 +298,7 @@
             const csvText = await response.text();
             console.log(`✅ Sheet gid ${gid} loaded, length: ${csvText.length}`);
             
-            if (csvText.length === 0 || csvText.startsWith('<!DOCTYPE')) {
+            if (csvText.length === 0 || csvText.includes('<html>')) {
                 console.warn(`⚠️ Sheet gid ${gid} returned HTML instead of CSV`);
                 return [];
             }
@@ -334,9 +330,6 @@
         }
         
         console.log(`📊 Parsed ${result.length} rows from CSV`);
-        if (result.length > 0) {
-            console.log(`📋 First row sample:`, result[0]);
-        }
         return result;
     }
     
@@ -344,11 +337,6 @@
         try {
             console.log('🔄 Loading data from Google Sheet...');
             console.log(`📋 Sheet ID: ${SHEET_ID}`);
-            
-            // Test direct access first (for debugging)
-            const testUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
-            console.log(`🔗 Direct CSV URL (test): ${testUrl}`);
-            console.log(`⚠️ Make sure sheet is published: File → Share → Publish to web → CSV`);
             
             const [pageRaw, klikRaw] = await Promise.all([
                 fetchSheetAsCSV(SHEET_GID.page),
@@ -362,10 +350,7 @@
             console.log(`✅ Klik areas loaded: ${klikData.length} rows`);
             
             if (pagesData.length === 0) {
-                console.error('❌ No data in "page" sheet. Please check:');
-                console.error('   1. Sheet name is "page" (lowercase)');
-                console.error('   2. Sheet has headers: page_id, title, menu_type, label_menu, order, image_url, original_width, original_height, is_active_top, is_active_sidebar');
-                console.error('   3. At least 1 row of data');
+                console.error('❌ No data in "page" sheet.');
                 return false;
             }
             
@@ -602,8 +587,7 @@
             let errorMsg = '❌ Gagal memuat data. Periksa:<br><br>';
             errorMsg += '1. <b>Sheet sudah dipublish?</b> (File → Share → Publish to web → CSV)<br>';
             errorMsg += '2. <b>Sheet "page"</b> sudah diisi minimal 1 baris?<br>';
-            errorMsg += '3. <b>Kolom sheet "page"</b> harus: page_id, title, menu_type, label_menu, order, image_url, original_width, original_height, is_active_top, is_active_sidebar<br>';
-            errorMsg += '4. Buka Console (F12) untuk detail error.';
+            errorMsg += '3. Buka Console (F12) untuk detail error.';
             document.getElementById('app').innerHTML = `<div class="loading">${errorMsg}</div>`;
         }
     }
