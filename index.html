@@ -36,6 +36,7 @@
             display: flex;
             justify-content: flex-start;
             padding: 0 4px;
+            overflow-x: auto;
         }
 
         .page-nav {
@@ -46,7 +47,6 @@
             padding: 6px 20px;
             border-radius: 50px;
             border: 1px solid rgba(255, 215, 0, 0.3);
-            flex-wrap: wrap;
         }
 
         .page-nav a {
@@ -59,6 +59,7 @@
             text-decoration: none;
             transition: all 0.25s ease;
             cursor: pointer;
+            white-space: nowrap;
         }
 
         .page-nav a:hover, .page-nav a.active {
@@ -69,13 +70,12 @@
         .content-row {
             display: flex;
             gap: 0;
-            flex-wrap: wrap;
             align-items: flex-start;
         }
 
         .image-wrapper {
             flex: 1;
-            min-width: 300px;
+            min-width: 0;
             position: relative;
             background: #e8f0e3;
             border-radius: 16px 0 0 16px;
@@ -89,20 +89,9 @@
             height: auto;
             display: block;
         }
-        
-        /* PERBAIKAN: Mengubah kursor menjadi pointer di area yang bisa diklik */
-        .image-wrapper area,
-        map area {
-            cursor: pointer;
-        }
-        
-        /* Alternatif: semua map */
-        map {
-            cursor: pointer;
-        }
 
         .pokja-sidebar {
-            width: 33px;
+            width: 45px;
             background: linear-gradient(135deg, #0d3b4f 0%, #0a2e3f 100%);
             border-radius: 0 16px 16px 0;
             border-left: 2px solid #00bcd4;
@@ -127,7 +116,7 @@
             transition: all 0.25s ease;
             cursor: pointer;
             flex: 1;
-            min-height: 60px;
+            min-height: 70px;
         }
 
         .pokja-btn:not(:last-child) {
@@ -149,32 +138,10 @@
             transform: rotate(90deg);
         }
 
-        @media (max-width: 850px) {
-            .content-row { flex-direction: column; }
-            .image-wrapper { border-radius: 16px 16px 0 0; }
-            .pokja-sidebar {
-                width: 100%;
-                border-radius: 0 0 16px 16px;
-                border-left: none;
-                border-top: 2px solid #00bcd4;
-            }
-            .pokja-list {
-                flex-direction: row;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 12px;
-                padding: 16px;
-            }
-            .horizontal-text {
-                transform: rotate(0deg);
-                padding: 8px 12px;
-            }
-            .pokja-btn {
-                min-height: auto;
-                background: rgba(0, 188, 212, 0.25);
-                border-radius: 30px;
-            }
-            .pokja-btn:not(:last-child) { border-bottom: none; }
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
         }
     </style>
 </head>
@@ -207,14 +174,13 @@
     let currentPageId = 'index';
     
     // ============================================================
-    // FUNGSI BACA GOOGLE SHEET TANPA CORS (menggunakan gviz/tq)
+    // FUNGSI BACA GOOGLE SHEET (tanpa CORS)
     // ============================================================
     async function fetchSheetAsCSV(gid) {
         const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
         
         try {
             console.log(`🔄 Fetching sheet gid ${gid}...`);
-            
             const response = await fetch(url);
             
             if (!response.ok) {
@@ -344,7 +310,7 @@
         
         mapElement.innerHTML = '';
         
-        // Area dari Google Sheet (tanpa efek popup)
+        // Area dari Google Sheet
         areasForPage.forEach(area => {
             const coordsParts = area.coords.split(',').map(Number);
             let scaledCoords = '';
@@ -380,11 +346,13 @@
             areaElement.setAttribute('title', area.title);
             areaElement.setAttribute('alt', area.title);
             
-            // Hanya navigasi halaman, tanpa toast/modal
             if (area.target_page && area.target_page !== '') {
                 areaElement.addEventListener('click', (e) => {
                     e.preventDefault();
-                    if (pagesData.find(p => p.page_id === area.target_page)) {
+                    // Cek apakah target_page adalah URL
+                    if (area.target_page.startsWith('http://') || area.target_page.startsWith('https://')) {
+                        window.open(area.target_page, '_blank');
+                    } else if (pagesData.find(p => p.page_id === area.target_page)) {
                         currentPageId = area.target_page;
                         renderPage();
                     }
@@ -394,17 +362,16 @@
             mapElement.appendChild(areaElement);
         });
         
-        // Social Media Areas (dengan link ke URL eksternal)
+        // Social Media Areas
         SOCIAL_MEDIA_AREAS.forEach(social => {
             const coordsParts = social.coords.split(',').map(Number);
-            let scaledCoords = `${Math.round(coordsParts[0] * scaleX)},${Math.round(coordsParts[1] * scaleY)},${Math.round(coordsParts[2] * scaleX)},${Math.round(coordsParts[3] * scaleY)}`;
+            const scaledCoords = `${Math.round(coordsParts[0] * scaleX)},${Math.round(coordsParts[1] * scaleY)},${Math.round(coordsParts[2] * scaleX)},${Math.round(coordsParts[3] * scaleY)}`;
             
             const areaElement = document.createElement('area');
             areaElement.setAttribute('shape', social.shape);
             areaElement.setAttribute('coords', scaledCoords);
             areaElement.setAttribute('title', `${social.icon} ${social.title}`);
             areaElement.setAttribute('alt', social.title);
-            areaElement.setAttribute('target', '_blank');
             
             areaElement.addEventListener('click', (e) => {
                 e.preventDefault();
