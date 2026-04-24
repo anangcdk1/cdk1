@@ -273,14 +273,14 @@
     let currentPageId = 'index';
     
     // ============================================================
-    // FUNGSI BACA GOOGLE SHEET (TANPA PROXY)
+    // FUNGSI BACA GOOGLE SHEET MENGGUNAKAN OPENSHEET
     // ============================================================
     async function fetchSheetAsJSON(gid) {
-        // Gunakan Google Sheets API v4 (lebih reliable)
+        // Gunakan opensheet.elk.sh (gratis, tanpa CORS issues)
         const url = `https://opensheet.elk.sh/${SHEET_ID}/${gid}`;
         
         try {
-            console.log(`🔄 Fetching sheet gid ${gid}...`);
+            console.log(`🔄 Fetching sheet gid ${gid} from: ${url}`);
             
             const response = await fetch(url);
             
@@ -296,6 +296,7 @@
                 return [];
             }
             
+            console.log(`📋 First row sample:`, data[0]);
             return data;
         } catch (error) {
             console.error(`❌ Error fetching sheet gid ${gid}:`, error);
@@ -324,8 +325,9 @@
                 return false;
             }
             
-            // Debug: tampilkan data halaman pertama
+            // Tampilkan data halaman pertama untuk debugging
             console.log('Sample page data:', pagesData[0]);
+            console.log('Available columns in page:', Object.keys(pagesData[0]));
             
             return true;
         } catch (error) {
@@ -445,27 +447,47 @@
         }
     }
     
-    // Fungsi untuk mengubah image_id menjadi direct link Google Drive
-    function getImageUrl(imageId) {
-        if (!imageId) return '';
-        
-        // Jika sudah berupa URL lengkap, kembalikan apa adanya
-        if (imageId.startsWith('http://') || imageId.startsWith('https://')) {
-            // Pastikan URL Google Drive menggunakan format yang benar
-            if (imageId.includes('drive.google.com')) {
-                // Convert berbagai format Google Drive ke direct link
-                if (imageId.includes('/d/')) {
-                    const match = imageId.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                    if (match) {
-                        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
-                    }
-                }
-            }
-            return imageId;
+    // Fungsi untuk mendapatkan URL gambar dari Google Drive
+    function getImageUrl(imageValue) {
+        if (!imageValue) {
+            console.warn('No image value provided');
+            return 'https://via.placeholder.com/800x600?text=No+Image';
         }
         
-        // Jika hanya ID, buat direct link Google Drive
-        return `https://drive.google.com/thumbnail?id=${imageId}&sz=w1000`;
+        console.log('Processing image value:', imageValue);
+        
+        // Jika sudah berupa URL lengkap
+        if (imageValue.startsWith('http://') || imageValue.startsWith('https://')) {
+            // Handle berbagai format Google Drive URL
+            if (imageValue.includes('drive.google.com')) {
+                // Format: https://drive.google.com/file/d/FILE_ID/view
+                const match = imageValue.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (match) {
+                    const directUrl = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+                    console.log('Converted Google Drive URL to:', directUrl);
+                    return directUrl;
+                }
+                // Format: https://drive.google.com/uc?id=FILE_ID
+                const idMatch = imageValue.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (idMatch) {
+                    const directUrl = `https://drive.google.com/uc?export=view&id=${idMatch[1]}`;
+                    console.log('Extracted ID from URL:', directUrl);
+                    return directUrl;
+                }
+            }
+            return imageValue;
+        }
+        
+        // Jika hanya ID file (tanpa protocol)
+        if (imageValue.match(/^[a-zA-Z0-9_-]+$/)) {
+            const directUrl = `https://drive.google.com/uc?export=view&id=${imageValue}`;
+            console.log('Using file ID as:', directUrl);
+            return directUrl;
+        }
+        
+        // Fallback
+        console.warn('Unable to process image value, using placeholder');
+        return 'https://via.placeholder.com/800x600?text=Invalid+Image+URL';
     }
     
     function renderPage() {
@@ -478,11 +500,12 @@
             return;
         }
         
-        // Gunakan fungsi getImageUrl untuk mendapatkan URL gambar
-        const imageId = currentPage.image_id || currentPage.image_url;
-        const imageUrl = getImageUrl(imageId);
+        // Cek kolom mana yang tersedia untuk gambar
+        const imageValue = currentPage.image_id || currentPage.image_url || currentPage.gambar || '';
+        const imageUrl = getImageUrl(imageValue);
         
-        console.log('Loading image:', imageUrl); // Debug
+        console.log(`Rendering page: ${currentPageId}`);
+        console.log(`Image URL: ${imageUrl}`);
         
         let activeTopId = null;
         if (currentPage.menu_type === 'sidebar') {
@@ -503,21 +526,22 @@
                 <div class="page-nav">
                     ${topMenus.map(menu => `
                         <a data-page="${menu.page_id}" class="${activeTopId === menu.page_id ? 'active' : ''}">
-                            ${menu.label_menu}
+                            ${menu.label_menu || menu.page_id}
                         </a>
                     `).join('')}
                 </div>
             </div>
             <div class="content-row">
                 <div class="image-wrapper">
-                    <img src="${imageUrl}" alt="${currentPage.title}" id="mainImage" onerror="this.src='https://via.placeholder.com/800x600?text=Gambar+Tidak+Ditemukan'">
+                    <img src="${imageUrl}" alt="${currentPage.title || currentPage.page_id}" id="mainImage" 
+                         onerror="this.onerror=null; this.src='https://via.placeholder.com/800x600?text=Gambar+Gagal+Dimuat'">
                     <map name="dynamicMap" id="dynamicMap"></map>
                 </div>
                 <div class="pokja-sidebar" id="pokjaSidebar">
                     <div class="pokja-list">
                         ${sideMenus.map(menu => `
                             <div class="pokja-btn ${activeSideId === menu.page_id ? 'active' : ''}" data-page="${menu.page_id}">
-                                <div class="horizontal-text">${menu.label_menu}</div>
+                                <div class="horizontal-text">${menu.label_menu || menu.page_id}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -534,6 +558,7 @@
         
         document.getElementById('app').innerHTML = html;
         
+        // Event listeners untuk top menu
         document.querySelectorAll('.page-nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -545,6 +570,7 @@
             });
         });
         
+        // Event listeners untuk sidebar menu
         document.querySelectorAll('.pokja-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -564,11 +590,13 @@
             setSidebarHeight(img);
         } else {
             img.addEventListener('load', () => {
+                console.log('Image loaded successfully');
                 createClickableAreas(currentPageId, img, mapEl);
                 setSidebarHeight(img);
             });
-            img.addEventListener('error', () => {
+            img.addEventListener('error', (e) => {
                 console.error('Gambar gagal dimuat:', imageUrl);
+                console.error('Error event:', e);
             });
         }
         
@@ -587,13 +615,15 @@
         console.log('🚀 Initializing website...');
         const success = await loadAllData();
         if (success && pagesData.length > 0) {
+            console.log('Data loaded successfully, rendering page...');
             renderPage();
         } else {
             let errorMsg = '❌ Gagal memuat data. Pastikan:<br><br>';
             errorMsg += '1. <b>Sheet sudah dipublish</b> (File → Share → Publish to web)<br>';
             errorMsg += '2. <b>Sheet "page"</b> sudah diisi minimal 1 baris data<br>';
             errorMsg += '3. <b>Kolom image_id</b> berisi ID file Google Drive yang valid<br>';
-            errorMsg += '4. <b>File gambar di Google Drive</b> sudah di-set ke "Anyone with link can view"';
+            errorMsg += '4. <b>File gambar di Google Drive</b> sudah di-set ke "Anyone with the link can view"<br><br>';
+            errorMsg += '📋 <b>Catatan:</b> Pastikan kolom di sheet Anda menggunakan nama: page_id, image_id, label_menu, dll.';
             document.getElementById('app').innerHTML = `<div class="loading">${errorMsg}</div>`;
         }
     }
