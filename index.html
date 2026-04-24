@@ -273,66 +273,34 @@
     let currentPageId = 'index';
     
     // ============================================================
-    // FUNGSI BACA GOOGLE SHEET DENGAN PROXY
+    // FUNGSI BACA GOOGLE SHEET (TANPA PROXY)
     // ============================================================
-    async function fetchSheetAsCSV(gid) {
-        const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
-        const proxyUrl = `https://cors-anywhere.herokuapp.com/${csvUrl}`;
+    async function fetchSheetAsJSON(gid) {
+        // Gunakan Google Sheets API v4 (lebih reliable)
+        const url = `https://opensheet.elk.sh/${SHEET_ID}/${gid}`;
         
         try {
             console.log(`🔄 Fetching sheet gid ${gid}...`);
             
-            const response = await fetch(proxyUrl, {
-                method: 'GET',
-                headers: {
-                    'Origin': 'https://anangcdk1.github.io',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
+            const response = await fetch(url);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            const csvText = await response.text();
-            console.log(`✅ Sheet gid ${gid} loaded, length: ${csvText.length}`);
+            const data = await response.json();
+            console.log(`✅ Sheet gid ${gid} loaded, rows: ${data.length}`);
             
-            if (csvText.length === 0 || csvText.includes('<html>') || csvText.includes('DOCTYPE')) {
-                console.warn(`⚠️ Sheet gid ${gid} returned HTML instead of CSV`);
+            if (data.length === 0) {
+                console.warn(`⚠️ Sheet gid ${gid} is empty`);
                 return [];
             }
             
-            return parseCSV(csvText);
+            return data;
         } catch (error) {
             console.error(`❌ Error fetching sheet gid ${gid}:`, error);
             return [];
         }
-    }
-    
-    function parseCSV(csvText) {
-        const rows = csvText.trim().split('\n');
-        if (rows.length < 2) {
-            console.warn('CSV has less than 2 rows');
-            return [];
-        }
-        
-        const headers = rows[0].split(',').map(h => h.replace(/"/g, '').trim());
-        const result = [];
-        
-        for (let i = 1; i < rows.length; i++) {
-            const values = rows[i].split(',').map(v => v.replace(/"/g, '').trim());
-            const obj = {};
-            headers.forEach((header, idx) => {
-                obj[header] = values[idx] || '';
-            });
-            result.push(obj);
-        }
-        
-        console.log(`📊 Parsed ${result.length} rows from CSV`);
-        if (result.length > 0) {
-            console.log(`📋 First row:`, result[0]);
-        }
-        return result;
     }
     
     async function loadAllData() {
@@ -341,8 +309,8 @@
             console.log(`📋 Sheet ID: ${SHEET_ID}`);
             
             const [pageRaw, klikRaw] = await Promise.all([
-                fetchSheetAsCSV(SHEET_GID.page),
-                fetchSheetAsCSV(SHEET_GID.klik)
+                fetchSheetAsJSON(SHEET_GID.page),
+                fetchSheetAsJSON(SHEET_GID.klik)
             ]);
             
             pagesData = pageRaw;
@@ -355,6 +323,9 @@
                 console.error('❌ No data in "page" sheet.');
                 return false;
             }
+            
+            // Debug: tampilkan data halaman pertama
+            console.log('Sample page data:', pagesData[0]);
             
             return true;
         } catch (error) {
@@ -477,17 +448,29 @@
     // Fungsi untuk mengubah image_id menjadi direct link Google Drive
     function getImageUrl(imageId) {
         if (!imageId) return '';
+        
         // Jika sudah berupa URL lengkap, kembalikan apa adanya
         if (imageId.startsWith('http://') || imageId.startsWith('https://')) {
+            // Pastikan URL Google Drive menggunakan format yang benar
+            if (imageId.includes('drive.google.com')) {
+                // Convert berbagai format Google Drive ke direct link
+                if (imageId.includes('/d/')) {
+                    const match = imageId.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                    if (match) {
+                        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+                    }
+                }
+            }
             return imageId;
         }
+        
         // Jika hanya ID, buat direct link Google Drive
-        return `https://drive.google.com/uc?export=view&id=${imageId}`;
+        return `https://drive.google.com/thumbnail?id=${imageId}&sz=w1000`;
     }
     
     function renderPage() {
-        const topMenus = pagesData.filter(p => p.is_active_top === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
-        const sideMenus = pagesData.filter(p => p.is_active_sidebar === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
+        const topMenus = pagesData.filter(p => p.is_active_top === 'TRUE').sort((a,b) => (parseInt(a.order) || 0) - (parseInt(b.order) || 0));
+        const sideMenus = pagesData.filter(p => p.is_active_sidebar === 'TRUE').sort((a,b) => (parseInt(a.order) || 0) - (parseInt(b.order) || 0));
         
         const currentPage = pagesData.find(p => p.page_id === currentPageId);
         if (!currentPage) {
@@ -496,7 +479,10 @@
         }
         
         // Gunakan fungsi getImageUrl untuk mendapatkan URL gambar
-        const imageUrl = getImageUrl(currentPage.image_id || currentPage.image_url);
+        const imageId = currentPage.image_id || currentPage.image_url;
+        const imageUrl = getImageUrl(imageId);
+        
+        console.log('Loading image:', imageUrl); // Debug
         
         let activeTopId = null;
         if (currentPage.menu_type === 'sidebar') {
@@ -524,7 +510,7 @@
             </div>
             <div class="content-row">
                 <div class="image-wrapper">
-                    <img src="${imageUrl}" alt="${currentPage.title}" id="mainImage">
+                    <img src="${imageUrl}" alt="${currentPage.title}" id="mainImage" onerror="this.src='https://via.placeholder.com/800x600?text=Gambar+Tidak+Ditemukan'">
                     <map name="dynamicMap" id="dynamicMap"></map>
                 </div>
                 <div class="pokja-sidebar" id="pokjaSidebar">
@@ -581,6 +567,9 @@
                 createClickableAreas(currentPageId, img, mapEl);
                 setSidebarHeight(img);
             });
+            img.addEventListener('error', () => {
+                console.error('Gambar gagal dimuat:', imageUrl);
+            });
         }
         
         window.addEventListener('resize', () => {
@@ -600,11 +589,11 @@
         if (success && pagesData.length > 0) {
             renderPage();
         } else {
-            let errorMsg = '❌ Gagal memuat data. Periksa:<br><br>';
-            errorMsg += '1. <b>Sheet sudah dipublish?</b> (File → Share → Publish to web → CSV)<br>';
-            errorMsg += '2. <b>Sheet "page"</b> sudah diisi minimal 1 baris?<br>';
-            errorMsg += '3. <b>CORS Anywhere</b> perlu aktivasi: buka link di bawah dulu<br>';
-            errorMsg += '<a href="https://cors-anywhere.herokuapp.com/" target="_blank" style="color:#ffd700;">👉 Klik di sini untuk aktivasi CORS Anywhere</a>';
+            let errorMsg = '❌ Gagal memuat data. Pastikan:<br><br>';
+            errorMsg += '1. <b>Sheet sudah dipublish</b> (File → Share → Publish to web)<br>';
+            errorMsg += '2. <b>Sheet "page"</b> sudah diisi minimal 1 baris data<br>';
+            errorMsg += '3. <b>Kolom image_id</b> berisi ID file Google Drive yang valid<br>';
+            errorMsg += '4. <b>File gambar di Google Drive</b> sudah di-set ke "Anyone with link can view"';
             document.getElementById('app').innerHTML = `<div class="loading">${errorMsg}</div>`;
         }
     }
