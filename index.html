@@ -89,6 +89,17 @@
             height: auto;
             display: block;
         }
+        
+        /* PERBAIKAN: Mengubah kursor menjadi pointer di area yang bisa diklik */
+        .image-wrapper area,
+        map area {
+            cursor: pointer;
+        }
+        
+        /* Alternatif: semua map */
+        map {
+            cursor: pointer;
+        }
 
         .pokja-sidebar {
             width: 33px;
