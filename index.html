@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="description" content="CDK I Blora 2026 - Peta Interaktif">
     <title>CDK I Blora 2026</title>
     <style>
         * {
@@ -37,6 +38,7 @@
             justify-content: flex-start;
             padding: 0 4px;
             overflow-x: auto;
+            scrollbar-width: thin;
         }
 
         .page-nav {
@@ -60,17 +62,19 @@
             transition: all 0.25s ease;
             cursor: pointer;
             white-space: nowrap;
+            display: inline-block;
         }
 
         .page-nav a:hover, .page-nav a.active {
             background: #ffd700;
             color: #1a3a1a;
+            transform: translateY(-2px);
         }
 
         .content-row {
             display: flex;
             gap: 0;
-            align-items: flex-start;
+            align-items: stretch;
         }
 
         .image-wrapper {
@@ -88,6 +92,11 @@
             width: 100%;
             height: auto;
             display: block;
+            transition: opacity 0.3s ease;
+        }
+
+        .image-wrapper img.loading {
+            opacity: 0.5;
         }
 
         .highlight-overlay {
@@ -107,6 +116,12 @@
             box-sizing: border-box;
             transition: all 0.2s ease;
             pointer-events: none;
+            cursor: pointer;
+        }
+
+        .highlight-area:hover {
+            background: rgba(255, 215, 0, 0.3);
+            border-color: #ffd700;
         }
 
         .pokja-sidebar {
@@ -136,6 +151,7 @@
             cursor: pointer;
             flex: 1;
             min-height: 70px;
+            position: relative;
         }
 
         .pokja-btn:not(:last-child) {
@@ -145,6 +161,8 @@
         .pokja-btn:hover, .pokja-btn.active {
             background: #ffd700;
             color: #1a3a1a;
+            transform: scale(1.05);
+            z-index: 1;
         }
 
         .horizontal-text {
@@ -164,16 +182,36 @@
             font-size: 18px;
         }
 
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #ffd700;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         .error-message {
             background: rgba(255,0,0,0.2);
             border: 2px solid #ff4444;
             border-radius: 10px;
             padding: 20px;
             margin: 20px;
+            color: white;
+        }
+
+        .error-message h3 {
+            margin-bottom: 10px;
         }
 
         /* ============================================ */
-        /* POPUP STYLES */
+        /* POPUP STYLES - IMPROVED */
         /* ============================================ */
         .popup-overlay {
             position: fixed;
@@ -184,6 +222,12 @@
             background: rgba(0, 0, 0, 0.85);
             z-index: 1000;
             backdrop-filter: blur(5px);
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         .popup-container {
@@ -202,6 +246,18 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translate(-50%, -50%) scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
         }
 
         .popup-header {
@@ -247,6 +303,10 @@
         .popup-btn:hover {
             background: rgba(255, 255, 255, 0.3);
             transform: scale(1.05);
+        }
+
+        .popup-btn:active {
+            transform: scale(0.95);
         }
 
         .popup-btn-close {
@@ -325,6 +385,18 @@
             cursor: pointer;
         }
 
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
         /* Responsive untuk mobile */
         @media (max-width: 768px) {
             .popup-container {
@@ -344,46 +416,143 @@
                 min-width: 45px;
                 font-size: 12px;
             }
+
+            .page-nav a {
+                font-size: 14px;
+                padding: 4px 12px;
+            }
+
+            .horizontal-text {
+                font-size: 12px;
+            }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) {
+            .pokja-btn:hover {
+                transform: none;
+            }
+            
+            .highlight-area {
+                background: rgba(255, 215, 0, 0.2);
+            }
         }
     </style>
 </head>
 <body>
 <div class="main-wrapper" id="app">
-    <div class="loading">⏳ Memuat data dari Google Sheet...</div>
+    <div class="loading">
+        <div class="loading-spinner"></div>
+        <div>⏳ Memuat data dari Google Sheet...</div>
+    </div>
 </div>
 
 <script>
     // ============================================================
     // KONFIGURASI
     // ============================================================
-    const SHEET_ID = '16iACO_haYmDeOFGrMAig-WLiU-n2pVRtnjr8EGkOPg0';
-    
-    const SHEET_GID = {
-        page: '0',
-        klik: '475336072'
+    const CONFIG = {
+        SHEET_ID: '16iACO_haYmDeOFGrMAig-WLiU-n2pVRtnjr8EGkOPg0',
+        SHEET_GID: {
+            page: '0',
+            klik: '475336072'
+        },
+        CACHE_TTL: 3600000, // 1 hour cache
+        DEBUG: false, // Set ke true untuk development
+        HIGHLIGHT_CONFIG: {
+            defaultColor: 'rgba(0, 0, 0, 0.25)',
+            hoverColor: 'rgba(255, 215, 0, 0.3)',
+            borderColor: '#000000'
+        }
     };
-    
-    // Konfigurasi highlight
-    const HIGHLIGHT_CONFIG = {
-        defaultColor: 'rgba(0, 0, 0, 0.25)',
-        borderColor: '#000000'
-    };
-    
+
+    // Data storage
     let pagesData = [];
     let klikData = [];
     let currentPageId = 'index';
     let currentHighlightOverlay = null;
     let currentPopup = null;
+    let resizeHandler = null;
+    
+    // ============================================================
+    // HELPER FUNCTIONS
+    // ============================================================
+    
+    function log(...args) {
+        if (CONFIG.DEBUG) {
+            console.log(...args);
+        }
+    }
+    
+    function sanitizeHTML(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+    
+    function validateURL(url) {
+        if (!url) return false;
+        const allowedProtocols = ['http:', 'https:'];
+        try {
+            const urlObj = new URL(url);
+            return allowedProtocols.includes(urlObj.protocol);
+        } catch (e) {
+            return false;
+        }
+    }
+    
+    // ============================================================
+    // CACHE MANAGEMENT
+    // ============================================================
+    
+    class CacheManager {
+        constructor(ttl) {
+            this.ttl = ttl;
+        }
+        
+        set(key, data) {
+            const item = {
+                data: data,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(key, JSON.stringify(item));
+        }
+        
+        get(key) {
+            const itemStr = localStorage.getItem(key);
+            if (!itemStr) return null;
+            
+            try {
+                const item = JSON.parse(itemStr);
+                if (Date.now() - item.timestamp > this.ttl) {
+                    localStorage.removeItem(key);
+                    return null;
+                }
+                return item.data;
+            } catch (e) {
+                return null;
+            }
+        }
+        
+        clear(key) {
+            localStorage.removeItem(key);
+        }
+    }
+    
+    const cacheManager = new CacheManager(CONFIG.CACHE_TTL);
     
     // ============================================================
     // FUNGSI KONVERSI URL UNTUK EMBED
     // ============================================================
     
     function getEmbedUrl(url) {
+        if (!url) return '';
+        
         // YouTube - format youtu.be
         if (url.includes('youtu.be')) {
             const videoId = url.split('youtu.be/')[1].split('?')[0];
-            return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+            return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
         }
         
         // YouTube - format youtube.com/watch
@@ -391,16 +560,16 @@
             const urlParams = new URLSearchParams(url.split('?')[1]);
             const videoId = urlParams.get('v');
             if (videoId) {
-                return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+                return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
             }
         }
         
-        // YouTube - format youtube.com/embed (sudah embed)
+        // YouTube - format youtube.com/embed
         if (url.includes('youtube.com/embed')) {
             return url;
         }
         
-        // Google Drive File (PDF, gambar, video)
+        // Google Drive File
         if (url.includes('drive.google.com/file')) {
             const match = url.match(/\/d\/(.+?)(\/|$)/);
             if (match) {
@@ -426,7 +595,7 @@
             }
         }
         
-        // Google Sheets (spreadsheet)
+        // Google Sheets
         if (url.includes('docs.google.com/spreadsheets')) {
             const match = url.match(/\/d\/(.+?)(\/|$)/);
             if (match) {
@@ -454,7 +623,6 @@
             return url;
         }
         
-        // Default: gunakan URL asli
         return url;
     }
     
@@ -466,19 +634,23 @@
     }
     
     // ============================================================
-    // FUNGSI POPUP
+    // FUNGSI POPUP - IMPROVED
     // ============================================================
     
     function openPopup(url, title) {
-        // Tutup popup yang sudah ada
+        if (!validateURL(url)) {
+            console.error('Invalid URL:', url);
+            alert('URL tidak valid');
+            return;
+        }
+        
         closePopup();
         
-        // Konversi URL ke format embed
         const embedUrl = getEmbedUrl(url);
-        console.log(`🔗 Original URL: ${url}`);
-        console.log(`🔗 Embed URL: ${embedUrl}`);
+        log('Original URL:', url);
+        log('Embed URL:', embedUrl);
         
-        // Buat elemen popup
+        // Create overlay with animation
         const overlay = document.createElement('div');
         overlay.className = 'popup-overlay';
         
@@ -491,51 +663,22 @@
         
         const titleSpan = document.createElement('div');
         titleSpan.className = 'popup-title';
-        titleSpan.innerHTML = `📋 ${title || 'Popup'}`;
+        titleSpan.innerHTML = `📋 ${sanitizeHTML(title || 'Popup')}`;
         
         const toolbar = document.createElement('div');
         toolbar.className = 'popup-toolbar';
         
-        // Zoom out button
-        const zoomOutBtn = document.createElement('button');
-        zoomOutBtn.className = 'popup-btn';
-        zoomOutBtn.innerHTML = '<span class="emoji">🔍</span><span>−</span>';
-        zoomOutBtn.title = 'Zoom Out (Ctrl + -)';
-        
-        // Zoom value display
+        // Zoom controls
+        const zoomOutBtn = createButton('🔍', '-', 'Zoom Out (Ctrl + -)');
         const zoomValue = document.createElement('span');
         zoomValue.className = 'zoom-value';
         zoomValue.textContent = '100%';
-        
-        // Zoom in button
-        const zoomInBtn = document.createElement('button');
-        zoomInBtn.className = 'popup-btn';
-        zoomInBtn.innerHTML = '<span class="emoji">🔍</span><span>+</span>';
-        zoomInBtn.title = 'Zoom In (Ctrl + +)';
-        
-        // Reset zoom button
-        const resetBtn = document.createElement('button');
-        resetBtn.className = 'popup-btn';
-        resetBtn.innerHTML = '<span>⟳</span><span>100%</span>';
-        resetBtn.title = 'Reset Zoom (Ctrl + 0)';
-        
-        // Buka di tab baru button
-        const newTabBtn = document.createElement('button');
-        newTabBtn.className = 'popup-btn';
-        newTabBtn.innerHTML = '<span>🔗</span><span>Tab Baru</span>';
-        newTabBtn.title = 'Buka di Tab Baru';
-        
-        // Fullscreen button
-        const fullscreenBtn = document.createElement('button');
-        fullscreenBtn.className = 'popup-btn';
-        fullscreenBtn.innerHTML = '<span>⤢</span><span>Fullscreen</span>';
-        fullscreenBtn.title = 'Fullscreen';
-        
-        // Close button
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'popup-btn popup-btn-close';
-        closeBtn.innerHTML = '<span>✕</span><span>Tutup</span>';
-        closeBtn.title = 'Tutup (ESC)';
+        const zoomInBtn = createButton('🔍', '+', 'Zoom In (Ctrl + +)');
+        const resetBtn = createButton('⟳', '100%', 'Reset Zoom (Ctrl + 0)');
+        const newTabBtn = createButton('🔗', 'Tab Baru', 'Buka di Tab Baru');
+        const fullscreenBtn = createButton('⤢', 'Fullscreen', 'Fullscreen');
+        const closeBtn = createButton('✕', 'Tutup', 'Tutup (ESC)');
+        closeBtn.classList.add('popup-btn-close');
         
         toolbar.appendChild(zoomOutBtn);
         toolbar.appendChild(zoomValue);
@@ -555,21 +698,23 @@
         const contentDiv = document.createElement('div');
         contentDiv.className = 'popup-content';
         
-        // Tentukan jenis konten
+        // Determine content type
         const contentType = getContentType(embedUrl);
         let contentElement;
         
         if (contentType === 'image') {
             contentElement = document.createElement('img');
             contentElement.src = embedUrl;
-            contentElement.alt = title || 'Gambar';
+            contentElement.alt = sanitizeHTML(title) || 'Gambar';
             contentElement.style.maxWidth = '100%';
             contentElement.style.height = 'auto';
+            contentElement.onerror = () => {
+                showPopupError(contentDiv, 'Gagal memuat gambar');
+            };
         } else {
-            // Default: iframe
             contentElement = document.createElement('iframe');
             contentElement.src = embedUrl;
-            contentElement.title = title || 'Konten';
+            contentElement.title = sanitizeHTML(title) || 'Konten';
             contentElement.allow = "fullscreen";
             contentElement.style.width = '100%';
             contentElement.style.height = '100%';
@@ -577,6 +722,18 @@
             contentElement.setAttribute('frameborder', '0');
             contentElement.setAttribute('allowfullscreen', 'true');
             contentElement.setAttribute('allow', 'autoplay; fullscreen');
+            
+            // Set timeout for iframe loading
+            const timeoutId = setTimeout(() => {
+                if (contentElement && !contentElement.__loaded) {
+                    showPopupError(contentDiv, 'Konten membutuhkan waktu lama untuk dimuat. Pastikan koneksi internet stabil.');
+                }
+            }, 10000);
+            
+            contentElement.onload = () => {
+                contentElement.__loaded = true;
+                clearTimeout(timeoutId);
+            };
         }
         
         contentDiv.appendChild(contentElement);
@@ -588,7 +745,7 @@
         
         document.body.appendChild(overlay);
         
-        // Simpan referensi
+        // Store reference
         currentPopup = {
             overlay,
             container,
@@ -600,7 +757,7 @@
             embedUrl: embedUrl
         };
         
-        // Zoom logic
+        // Zoom functions
         function updateZoom() {
             const zoom = currentPopup.currentZoom / 100;
             currentPopup.contentDiv.style.transform = `scale(${zoom})`;
@@ -638,16 +795,19 @@
         resetBtn.onclick = resetZoom;
         
         newTabBtn.onclick = () => {
-            window.open(currentPopup.originalUrl, '_blank');
+            if (validateURL(currentPopup.originalUrl)) {
+                window.open(currentPopup.originalUrl, '_blank');
+            }
         };
         
         fullscreenBtn.onclick = () => {
-            if (container.requestFullscreen) {
-                container.requestFullscreen();
-            } else if (container.webkitRequestFullscreen) {
-                container.webkitRequestFullscreen();
-            } else if (container.msRequestFullscreen) {
-                container.msRequestFullscreen();
+            const elem = container;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
             }
         };
         
@@ -690,21 +850,31 @@
         document.addEventListener('keydown', keyboardHandler);
         currentPopup.keyboardHandler = keyboardHandler;
         
-        // Handle iframe load error
-        if (contentElement.tagName === 'IFRAME') {
-            setTimeout(() => {
-                try {
-                    const iframeDoc = contentElement.contentDocument || contentElement.contentWindow?.document;
-                    if (!iframeDoc || !iframeDoc.body || iframeDoc.body.innerHTML === '') {
-                        // Mungkin error, tapi biarkan jika konten tetap loading
-                    }
-                } catch (e) {
-                    console.warn('Cannot access iframe content (cross-origin)');
-                }
-            }, 3000);
-        }
-        
         updateZoom();
+    }
+    
+    function createButton(emoji, text, title) {
+        const btn = document.createElement('button');
+        btn.className = 'popup-btn';
+        btn.innerHTML = `<span class="emoji">${emoji}</span><span>${text}</span>`;
+        btn.title = title;
+        return btn;
+    }
+    
+    function showPopupError(container, message) {
+        if (!container) return;
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'popup-error';
+        errorDiv.innerHTML = `
+            <div style="font-size: 48px;">⚠️</div>
+            <h3>Gagal Memuat Konten</h3>
+            <p>${sanitizeHTML(message)}</p>
+            <button onclick="this.closest('.popup-container')?.parentElement?.remove()">Tutup</button>
+        `;
+        
+        container.innerHTML = '';
+        container.appendChild(errorDiv);
     }
     
     function closePopup() {
@@ -718,115 +888,79 @@
     }
     
     // ============================================================
-    // FUNGSI BACA GOOGLE SHEET
+    // FUNGSI BACA GOOGLE SHEET - IMPROVED
     // ============================================================
-    async function fetchSheetAsCSV(gid) {
-        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
+    
+    async function fetchSheetAsJSON(gid) {
+        const cacheKey = `sheet_${gid}`;
+        const cachedData = cacheManager.get(cacheKey);
+        
+        if (cachedData) {
+            log(`Using cached data for gid ${gid}`);
+            return cachedData;
+        }
+        
+        const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`;
         
         try {
-            console.log(`🔄 Fetching sheet gid ${gid}...`);
+            log(`Fetching sheet gid ${gid}...`);
             const response = await fetch(url);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            const csvText = await response.text();
-            console.log(`✅ Sheet gid ${gid} loaded, length: ${csvText.length}`);
+            const text = await response.text();
+            // Remove Google's callback wrapper
+            const jsonText = text.substring(47, text.length - 2);
+            const jsonData = JSON.parse(jsonText);
             
-            if (csvText.length === 0 || csvText.includes('<html>') || csvText.includes('DOCTYPE')) {
-                console.warn(`⚠️ Sheet gid ${gid} returned HTML instead of CSV`);
-                return [];
+            if (!jsonData.table || !jsonData.table.rows) {
+                throw new Error('Invalid JSON structure');
             }
             
-            return parseCSV(csvText);
+            // Parse to array of objects
+            const rows = jsonData.table.rows.map(row => {
+                const obj = {};
+                jsonData.table.cols.forEach((col, idx) => {
+                    let value = row.c[idx]?.v;
+                    if (value === undefined || value === null) value = '';
+                    obj[col.label] = value;
+                });
+                return obj;
+            });
+            
+            log(`✅ Parsed ${rows.length} rows from sheet gid ${gid}`);
+            if (rows.length > 0) {
+                log('First row sample:', rows[0]);
+            }
+            
+            // Cache the data
+            cacheManager.set(cacheKey, rows);
+            
+            return rows;
         } catch (error) {
             console.error(`❌ Error fetching sheet gid ${gid}:`, error);
             return [];
         }
     }
     
-    function parseCSV(csvText) {
-        const rows = [];
-        const lines = csvText.split('\n');
-        
-        if (lines.length < 2) {
-            console.warn('CSV has less than 2 rows');
-            return [];
-        }
-        
-        let headers = [];
-        let inQuote = false;
-        let currentHeader = '';
-        
-        for (let i = 0; i < lines[0].length; i++) {
-            const char = lines[0][i];
-            if (char === '"') {
-                inQuote = !inQuote;
-            } else if (char === ',' && !inQuote) {
-                headers.push(currentHeader.trim().replace(/^"|"$/g, ''));
-                currentHeader = '';
-            } else {
-                currentHeader += char;
-            }
-        }
-        headers.push(currentHeader.trim().replace(/^"|"$/g, ''));
-        
-        console.log('📋 Headers:', headers);
-        
-        for (let i = 1; i < lines.length; i++) {
-            if (lines[i].trim() === '') continue;
-            
-            const values = [];
-            inQuote = false;
-            let currentValue = '';
-            
-            for (let j = 0; j < lines[i].length; j++) {
-                const char = lines[i][j];
-                if (char === '"') {
-                    inQuote = !inQuote;
-                } else if (char === ',' && !inQuote) {
-                    values.push(currentValue.trim().replace(/^"|"$/g, ''));
-                    currentValue = '';
-                } else {
-                    currentValue += char;
-                }
-            }
-            values.push(currentValue.trim().replace(/^"|"$/g, ''));
-            
-            const obj = {};
-            headers.forEach((header, idx) => {
-                obj[header] = values[idx] || '';
-            });
-            rows.push(obj);
-        }
-        
-        console.log(`📊 Parsed ${rows.length} rows from CSV`);
-        if (rows.length > 0) {
-            console.log(`📋 First row:`, rows[0]);
-        }
-        return rows;
-    }
-    
     async function loadAllData() {
         try {
-            console.log('🔄 Loading data from Google Sheet...');
-            console.log(`📋 Sheet ID: ${SHEET_ID}`);
+            log('Loading data from Google Sheet...');
             
-            const [pageRaw, klikRaw] = await Promise.all([
-                fetchSheetAsCSV(SHEET_GID.page),
-                fetchSheetAsCSV(SHEET_GID.klik)
+            const [pageData, klikDataRaw] = await Promise.all([
+                fetchSheetAsJSON(CONFIG.SHEET_GID.page),
+                fetchSheetAsJSON(CONFIG.SHEET_GID.klik)
             ]);
             
-            pagesData = pageRaw;
-            klikData = klikRaw;
+            pagesData = pageData;
+            klikData = klikDataRaw;
             
-            console.log(`✅ Pages loaded: ${pagesData.length} rows`);
-            console.log(`✅ Klik areas loaded: ${klikData.length} rows`);
+            log(`Pages loaded: ${pagesData.length} rows`);
+            log(`Klik areas loaded: ${klikData.length} rows`);
             
-            if (klikData.length > 0) {
-                console.log('📊 Sample klik data:', klikData[0]);
-            } else {
+            if (klikData.length === 0) {
                 console.warn('⚠️ Tidak ada data di sheet klik!');
             }
             
@@ -843,16 +977,40 @@
     }
     
     // ============================================================
-    // FUNGSI MEMBUAT AREA KLIK
+    // FUNGSI MEMBUAT AREA KLIK - IMPROVED
     // ============================================================
     
-    function showHighlightOverlay(areas, imgElement, referenceWidth, referenceHeight, currentWidth, currentHeight) {
+    function validateCoords(coords, shape) {
+        if (!coords || coords.trim() === '') return false;
+        const parts = coords.split(',').map(Number);
+        
+        switch(shape) {
+            case 'rect':
+                return parts.length === 4 && parts.every(v => !isNaN(v));
+            case 'circle':
+                return parts.length === 3 && parts.every(v => !isNaN(v));
+            case 'poly':
+                return parts.length >= 6 && parts.length % 2 === 0 && parts.every(v => !isNaN(v));
+            default:
+                return false;
+        }
+    }
+    
+    function showHighlightOverlay(areas, imgElement, referenceWidth, referenceHeight) {
         if (currentHighlightOverlay) {
             currentHighlightOverlay.remove();
         }
         
         const wrapper = document.querySelector('.image-wrapper');
         if (!wrapper) return;
+        
+        const currentWidth = imgElement.clientWidth;
+        const currentHeight = imgElement.clientHeight;
+        
+        if (currentWidth === 0 || currentHeight === 0) {
+            log('Cannot show overlay: image not loaded');
+            return;
+        }
         
         const scaleX = currentWidth / referenceWidth;
         const scaleY = currentHeight / referenceHeight;
@@ -861,7 +1019,7 @@
         overlay.className = 'highlight-overlay';
         
         areas.forEach(area => {
-            if (!area.coords || area.coords.trim() === '') return;
+            if (!validateCoords(area.coords, area.shape)) return;
             
             const coordsParts = area.coords.split(',').map(Number);
             let left, top, width, height;
@@ -874,17 +1032,10 @@
                         width = Math.round((coordsParts[2] - coordsParts[0]) * scaleX);
                         height = Math.round((coordsParts[3] - coordsParts[1]) * scaleY);
                         
-                        const highlightDiv = document.createElement('div');
-                        highlightDiv.className = 'highlight-area';
-                        highlightDiv.style.left = left + 'px';
-                        highlightDiv.style.top = top + 'px';
-                        highlightDiv.style.width = width + 'px';
-                        highlightDiv.style.height = height + 'px';
-                        highlightDiv.style.background = HIGHLIGHT_CONFIG.defaultColor;
-                        highlightDiv.style.border = `2px solid ${HIGHLIGHT_CONFIG.borderColor}`;
-                        highlightDiv.title = area.title;
-                        
-                        overlay.appendChild(highlightDiv);
+                        if (width > 0 && height > 0) {
+                            const highlightDiv = createHighlightDiv(left, top, width, height, area.title);
+                            overlay.appendChild(highlightDiv);
+                        }
                     }
                     break;
                 case 'circle':
@@ -893,18 +1044,11 @@
                         const cy = Math.round(coordsParts[1] * scaleY);
                         const r = Math.round(coordsParts[2] * Math.min(scaleX, scaleY));
                         
-                        const highlightDiv = document.createElement('div');
-                        highlightDiv.className = 'highlight-area';
-                        highlightDiv.style.left = (cx - r) + 'px';
-                        highlightDiv.style.top = (cy - r) + 'px';
-                        highlightDiv.style.width = (r * 2) + 'px';
-                        highlightDiv.style.height = (r * 2) + 'px';
-                        highlightDiv.style.borderRadius = '50%';
-                        highlightDiv.style.background = HIGHLIGHT_CONFIG.defaultColor;
-                        highlightDiv.style.border = `2px solid ${HIGHLIGHT_CONFIG.borderColor}`;
-                        highlightDiv.title = area.title;
-                        
-                        overlay.appendChild(highlightDiv);
+                        if (r > 0) {
+                            const highlightDiv = createHighlightDiv(cx - r, cy - r, r * 2, r * 2, area.title);
+                            highlightDiv.style.borderRadius = '50%';
+                            overlay.appendChild(highlightDiv);
+                        }
                     }
                     break;
                 case 'poly':
@@ -922,18 +1066,11 @@
                         width = Math.round((maxX - minX) * scaleX);
                         height = Math.round((maxY - minY) * scaleY);
                         
-                        const highlightDiv = document.createElement('div');
-                        highlightDiv.className = 'highlight-area';
-                        highlightDiv.style.left = left + 'px';
-                        highlightDiv.style.top = top + 'px';
-                        highlightDiv.style.width = width + 'px';
-                        highlightDiv.style.height = height + 'px';
-                        highlightDiv.style.background = HIGHLIGHT_CONFIG.defaultColor;
-                        highlightDiv.style.border = `2px solid ${HIGHLIGHT_CONFIG.borderColor}`;
-                        highlightDiv.style.opacity = '0.5';
-                        highlightDiv.title = area.title;
-                        
-                        overlay.appendChild(highlightDiv);
+                        if (width > 0 && height > 0) {
+                            const highlightDiv = createHighlightDiv(left, top, width, height, area.title);
+                            highlightDiv.style.opacity = '0.5';
+                            overlay.appendChild(highlightDiv);
+                        }
                     }
                     break;
             }
@@ -946,13 +1083,26 @@
         }
     }
     
+    function createHighlightDiv(left, top, width, height, title) {
+        const div = document.createElement('div');
+        div.className = 'highlight-area';
+        div.style.left = left + 'px';
+        div.style.top = top + 'px';
+        div.style.width = width + 'px';
+        div.style.height = height + 'px';
+        div.style.background = CONFIG.HIGHLIGHT_CONFIG.defaultColor;
+        div.style.border = `2px solid ${CONFIG.HIGHLIGHT_CONFIG.borderColor}`;
+        div.title = sanitizeHTML(title);
+        return div;
+    }
+    
     function createClickableAreas(pageId, imgElement, mapElement) {
         if (!imgElement || !mapElement) {
             console.error('❌ imgElement atau mapElement null');
             return;
         }
         
-        // Filter area untuk page ini DAN area ALL
+        // Filter area for this page and ALL pages
         const areasForPage = klikData.filter(area => {
             const isActive = String(area.is_active || '').toUpperCase();
             const isValidActive = isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
@@ -960,12 +1110,12 @@
             return isValidPage && isValidActive;
         });
         
-        console.log(`📍 Area untuk page "${pageId}" + ALL: ${areasForPage.length} area ditemukan`);
+        log(`Area untuk page "${pageId}" + ALL: ${areasForPage.length} area ditemukan`);
         
         const currentWidth = imgElement.clientWidth;
         const currentHeight = imgElement.clientHeight;
         
-        console.log(`📐 Ukuran gambar tampilan: ${currentWidth} x ${currentHeight}`);
+        log(`Ukuran gambar tampilan: ${currentWidth} x ${currentHeight}`);
         
         if (currentWidth === 0 || currentHeight === 0) {
             console.warn('⚠️ Ukuran gambar 0, tunggu load');
@@ -979,20 +1129,20 @@
         const scaleX = currentWidth / referenceWidth;
         const scaleY = currentHeight / referenceHeight;
         
-        console.log(`📏 Referensi dari sheet: ${referenceWidth}x${referenceHeight}`);
-        console.log(`📏 Scale: ${scaleX.toFixed(4)} x ${scaleY.toFixed(4)}`);
+        log(`Referensi dari sheet: ${referenceWidth}x${referenceHeight}`);
+        log(`Scale: ${scaleX.toFixed(4)} x ${scaleY.toFixed(4)}`);
         
         mapElement.innerHTML = '';
         
         const highlightAreas = [];
         
         areasForPage.forEach((area, idx) => {
-            console.log(`📌 Area ${idx+1}: ${area.title} | coords: ${area.coords} | page_id: ${area.page_id}`);
-            
-            if (!area.coords || area.coords.trim() === '') {
-                console.warn(`⚠️ Area ${area.title} tidak memiliki koordinat`);
+            if (!validateCoords(area.coords, area.shape)) {
+                console.warn(`⚠️ Area ${area.title} memiliki koordinat tidak valid`);
                 return;
             }
+            
+            log(`Area ${idx+1}: ${area.title} | coords: ${area.coords} | page_id: ${area.page_id}`);
             
             const coordsParts = area.coords.split(',').map(Number);
             let scaledCoords = '';
@@ -1018,9 +1168,6 @@
                     }
                     scaledCoords = scaledPoints.join(',');
                     break;
-                default:
-                    console.warn(`⚠️ Unknown shape: ${area.shape}`);
-                    return;
             }
             
             if (!scaledCoords) {
@@ -1031,8 +1178,8 @@
             const areaElement = document.createElement('area');
             areaElement.setAttribute('shape', area.shape);
             areaElement.setAttribute('coords', scaledCoords);
-            areaElement.setAttribute('title', area.title);
-            areaElement.setAttribute('alt', area.title);
+            areaElement.setAttribute('title', sanitizeHTML(area.title));
+            areaElement.setAttribute('alt', sanitizeHTML(area.title));
             areaElement.style.cursor = 'pointer';
             
             const actionType = String(area.action_type || '').toUpperCase();
@@ -1042,11 +1189,16 @@
                 areaElement.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log(`🔘 Diklik: ${area.title} | action: ${actionType || 'internal'} | target: ${target}`);
+                    log(`🔘 Diklik: ${area.title} | action: ${actionType || 'internal'} | target: ${target}`);
                     
                     if (actionType === 'POPUP') {
-                        openPopup(target, area.title);
-                    } else if (actionType === 'URL' || target.startsWith('http://') || target.startsWith('https://')) {
+                        if (validateURL(target)) {
+                            openPopup(target, area.title);
+                        } else {
+                            console.error('Invalid popup URL:', target);
+                            alert('Link tidak valid');
+                        }
+                    } else if (actionType === 'URL' && validateURL(target)) {
                         window.open(target, '_blank');
                     } else if (pagesData.find(p => p.page_id === target)) {
                         currentPageId = target;
@@ -1055,6 +1207,12 @@
                         console.warn(`⚠️ Target "${target}" tidak dikenali`);
                         alert(`Target "${target}" tidak valid`);
                     }
+                });
+                
+                // Add touch event for mobile
+                areaElement.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    areaElement.click();
                 });
             }
             
@@ -1066,29 +1224,25 @@
             }
         });
         
-        console.log(`✅ Total area dibuat: ${mapElement.children.length}`);
+        log(`Total area dibuat: ${mapElement.children.length}`);
         imgElement.setAttribute('usemap', '#dynamicMap');
         
         if (highlightAreas.length > 0) {
-            showHighlightOverlay(highlightAreas, imgElement, referenceWidth, referenceHeight, currentWidth, currentHeight);
+            showHighlightOverlay(highlightAreas, imgElement, referenceWidth, referenceHeight);
         }
     }
     
     // ============================================================
-    // FUNGSI RENDER HALAMAN
+    // FUNGSI RENDER HALAMAN - IMPROVED
     // ============================================================
-    function setSidebarHeight(imgElement) {
-        const sidebar = document.getElementById('pokjaSidebar');
-        if (sidebar && imgElement && imgElement.clientHeight > 0) {
-            sidebar.style.height = imgElement.clientHeight + 'px';
-        }
-    }
     
     function getImageUrl(imageId) {
         if (!imageId) return '';
+        // If it's already a full URL
         if (imageId.startsWith('http://') || imageId.startsWith('https://')) {
             return imageId;
         }
+        // Google Drive direct link
         return `https://lh3.googleusercontent.com/d/${imageId}`;
     }
     
@@ -1098,7 +1252,7 @@
         
         const currentPage = pagesData.find(p => p.page_id === currentPageId);
         if (!currentPage) {
-            document.getElementById('app').innerHTML = '<div class="loading">❌ Halaman tidak ditemukan</div>';
+            document.getElementById('app').innerHTML = '<div class="loading"><div class="error-message"><h3>❌ Halaman tidak ditemukan</h3><p>Silakan refresh halaman atau hubungi administrator.</p></div></div>';
             return;
         }
         
@@ -1122,22 +1276,22 @@
             <div class="nav-section">
                 <div class="page-nav">
                     ${topMenus.map(menu => `
-                        <a data-page="${menu.page_id}" class="${activeTopId === menu.page_id ? 'active' : ''}">
-                            ${menu.label_menu}
+                        <a data-page="${sanitizeHTML(menu.page_id)}" class="${activeTopId === menu.page_id ? 'active' : ''}">
+                            ${sanitizeHTML(menu.label_menu)}
                         </a>
                     `).join('')}
                 </div>
             </div>
             <div class="content-row">
                 <div class="image-wrapper">
-                    <img src="${imageUrl}" alt="${currentPage.title}" id="mainImage">
+                    <img src="${imageUrl}" alt="${sanitizeHTML(currentPage.title)}" id="mainImage" class="loading">
                     <map name="dynamicMap" id="dynamicMap"></map>
                 </div>
                 <div class="pokja-sidebar" id="pokjaSidebar">
                     <div class="pokja-list">
                         ${sideMenus.map(menu => `
-                            <div class="pokja-btn ${activeSideId === menu.page_id ? 'active' : ''}" data-page="${menu.page_id}">
-                                <div class="horizontal-text">${menu.label_menu}</div>
+                            <div class="pokja-btn ${activeSideId === menu.page_id ? 'active' : ''}" data-page="${sanitizeHTML(menu.page_id)}">
+                                <div class="horizontal-text">${sanitizeHTML(menu.label_menu)}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -1147,12 +1301,13 @@
         
         document.getElementById('app').innerHTML = html;
         
+        // Attach event listeners
         document.querySelectorAll('.page-nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const pageId = link.getAttribute('data-page');
                 if (pageId) {
-                    console.log(`🔄 Pindah ke halaman: ${pageId}`);
+                    log(`Pindah ke halaman: ${pageId}`);
                     currentPageId = pageId;
                     renderPage();
                 }
@@ -1164,7 +1319,7 @@
                 e.preventDefault();
                 const pageId = btn.getAttribute('data-page');
                 if (pageId) {
-                    console.log(`🔄 Pindah ke halaman (sidebar): ${pageId}`);
+                    log(`Pindah ke halaman (sidebar): ${pageId}`);
                     currentPageId = pageId;
                     renderPage();
                 }
@@ -1174,56 +1329,113 @@
         const img = document.getElementById('mainImage');
         const mapEl = document.getElementById('dynamicMap');
         
+        // Remove loading class when image loads
+        img.onload = function() {
+            log('Gambar loaded successfully');
+            this.classList.remove('loading');
+            createClickableAreas(currentPageId, img, mapEl);
+        };
+        
         img.onerror = function() {
             console.error(`❌ Gambar gagal dimuat: ${imageUrl}`);
+            this.classList.remove('loading');
             this.alt = 'Gambar tidak tersedia';
             this.style.backgroundColor = '#ccc';
             this.style.minHeight = '200px';
+            this.style.display = 'flex';
+            this.style.alignItems = 'center';
+            this.style.justifyContent = 'center';
+            this.style.fontSize = '14px';
+            this.style.color = '#666';
+            
+            // Show error message on image
+            const errorDiv = document.createElement('div');
+            errorDiv.style.position = 'absolute';
+            errorDiv.style.top = '50%';
+            errorDiv.style.left = '50%';
+            errorDiv.style.transform = 'translate(-50%, -50%)';
+            errorDiv.style.backgroundColor = 'rgba(0,0,0,0.7)';
+            errorDiv.style.color = 'white';
+            errorDiv.style.padding = '10px 20px';
+            errorDiv.style.borderRadius = '8px';
+            errorDiv.style.fontSize = '14px';
+            errorDiv.textContent = 'Gambar tidak dapat dimuat';
+            this.parentElement.style.position = 'relative';
+            this.parentElement.appendChild(errorDiv);
         };
         
-        if (img.complete && img.naturalHeight !== 0) {
-            console.log('🖼️ Gambar sudah complete');
-            createClickableAreas(currentPageId, img, mapEl);
-            setSidebarHeight(img);
-        } else {
-            img.addEventListener('load', () => {
-                console.log('🖼️ Gambar loaded');
-                createClickableAreas(currentPageId, img, mapEl);
-                setSidebarHeight(img);
-            });
+        // Handle resize with cleanup
+        if (resizeHandler) {
+            window.removeEventListener('resize', resizeHandler);
         }
         
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                if (img && img.clientHeight > 0) {
-                    console.log('📱 Resize detected');
-                    createClickableAreas(currentPageId, img, mapEl);
-                    setSidebarHeight(img);
-                }
-            }, 100);
-        });
+        resizeHandler = () => {
+            if (img && img.clientHeight > 0 && img.complete) {
+                log('Resize detected');
+                createClickableAreas(currentPageId, img, mapEl);
+            }
+        };
+        
+        window.addEventListener('resize', resizeHandler);
+        
+        // Initial creation if image already loaded
+        if (img.complete && img.naturalHeight !== 0) {
+            img.classList.remove('loading');
+            createClickableAreas(currentPageId, img, mapEl);
+        }
+    }
+    
+    function showErrorMessage(message, details = '') {
+        const errorHtml = `
+            <div class="loading">
+                <div class="error-message">
+                    <h3>❌ ${sanitizeHTML(message)}</h3>
+                    <p>${sanitizeHTML(details)}</p>
+                    <br>
+                    <p><strong>Langkah perbaikan:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>Periksa koneksi internet Anda</li>
+                        <li>Pastikan Google Sheet sudah dipublikasikan (File → Share → Publish to web)</li>
+                        <li>Refresh halaman (F5)</li>
+                        <li>Buka console browser (F12) untuk detail error</li>
+                    </ul>
+                    <br>
+                    <button onclick="location.reload()" style="padding: 10px 20px; background: #ffd700; color: #1a3a1a; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                        🔄 Refresh Halaman
+                    </button>
+                </div>
+            </div>
+        `;
+        document.getElementById('app').innerHTML = errorHtml;
     }
     
     // ============================================================
     // INITIALIZATION
     // ============================================================
     async function init() {
-        console.log('🚀 Initializing website...');
-        const success = await loadAllData();
-        if (success && pagesData.length > 0) {
-            renderPage();
-        } else {
-            let errorMsg = '❌ Gagal memuat data. Periksa:<br><br>';
-            errorMsg += '1. <b>Sheet sudah dipublish?</b> (File → Share → Publish to web → CSV)<br>';
-            errorMsg += '2. <b>Sheet "page"</b> sudah diisi minimal 1 baris?<br>';
-            errorMsg += '3. <b>Pastikan sheet bisa diakses publik</b><br>';
-            errorMsg += '<br><b>Tekan F12 untuk melihat detail error di console</b>';
-            document.getElementById('app').innerHTML = `<div class="loading"><div class="error-message">${errorMsg}</div></div>`;
+        log('🚀 Initializing website...');
+        
+        try {
+            const success = await loadAllData();
+            
+            if (success && pagesData.length > 0) {
+                renderPage();
+            } else {
+                showErrorMessage(
+                    'Gagal Memuat Data',
+                    'Tidak dapat mengambil data dari Google Sheet. Pastikan sheet sudah dipublikasikan dan dapat diakses publik.'
+                );
+            }
+        } catch (error) {
+            console.error('Initialization error:', error);
+            showErrorMessage(
+                'Error Inisialisasi',
+                error.message || 'Terjadi kesalahan saat memuat aplikasi.'
+            );
         }
     }
     
+    // Start the application
     init();
 </script>
 </body>
