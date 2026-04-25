@@ -469,243 +469,238 @@
     // FUNGSI POPUP
     // ============================================================
     
-    function openPopup(url, title) {
-        // Tutup popup yang sudah ada
-        closePopup();
+function openPopup(url, title) {
+    // Tutup popup yang sudah ada
+    closePopup();
+    
+    // Konversi URL ke format embed
+    const embedUrl = getEmbedUrl(url);
+    const contentType = getContentType(url);
+    
+    console.log(`📦 Content type: ${contentType}`);
+    console.log(`🔗 Original URL: ${url}`);
+    console.log(`🔗 Embed URL: ${embedUrl}`);
+    
+    // Buat elemen popup
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+    
+    const container = document.createElement('div');
+    container.className = 'popup-container';
+    
+    // Header
+    const header = document.createElement('div');
+    header.className = 'popup-header';
+    
+    const titleSpan = document.createElement('div');
+    titleSpan.className = 'popup-title';
+    titleSpan.innerHTML = `📋 ${title || 'Popup'}`;
+    
+    const toolbar = document.createElement('div');
+    toolbar.className = 'popup-toolbar';
+    
+    // Zoom out button
+    const zoomOutBtn = document.createElement('button');
+    zoomOutBtn.className = 'popup-btn';
+    zoomOutBtn.innerHTML = '<span class="emoji">🔍</span><span>−</span>';
+    zoomOutBtn.title = 'Zoom Out (Ctrl + -)';
+    
+    // Zoom value display
+    const zoomValue = document.createElement('span');
+    zoomValue.className = 'zoom-value';
+    zoomValue.textContent = '100%';
+    
+    // Zoom in button
+    const zoomInBtn = document.createElement('button');
+    zoomInBtn.className = 'popup-btn';
+    zoomInBtn.innerHTML = '<span class="emoji">🔍</span><span>+</span>';
+    zoomInBtn.title = 'Zoom In (Ctrl + +)';
+    
+    // Reset zoom button
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'popup-btn';
+    resetBtn.innerHTML = '<span>⟳</span><span>100%</span>';
+    resetBtn.title = 'Reset Zoom (Ctrl + 0)';
+    
+    // Buka di tab baru button
+    const newTabBtn = document.createElement('button');
+    newTabBtn.className = 'popup-btn';
+    newTabBtn.innerHTML = '<span>🔗</span><span>Tab Baru</span>';
+    newTabBtn.title = 'Buka di Tab Baru';
+    
+    // Fullscreen button
+    const fullscreenBtn = document.createElement('button');
+    fullscreenBtn.className = 'popup-btn';
+    fullscreenBtn.innerHTML = '<span>⤢</span><span>Fullscreen</span>';
+    fullscreenBtn.title = 'Fullscreen';
+    
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'popup-btn popup-btn-close';
+    closeBtn.innerHTML = '<span>✕</span><span>Tutup</span>';
+    closeBtn.title = 'Tutup (ESC)';
+    
+    toolbar.appendChild(zoomOutBtn);
+    toolbar.appendChild(zoomValue);
+    toolbar.appendChild(zoomInBtn);
+    toolbar.appendChild(resetBtn);
+    toolbar.appendChild(newTabBtn);
+    toolbar.appendChild(fullscreenBtn);
+    toolbar.appendChild(closeBtn);
+    
+    header.appendChild(titleSpan);
+    header.appendChild(toolbar);
+    
+    // Content wrapper
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'popup-content-wrapper';
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'popup-content';
+    
+    // Tentukan jenis konten
+    let contentElement;
+    
+    if (contentType === 'image') {
+        contentElement = document.createElement('img');
+        contentElement.src = embedUrl;
+        contentElement.alt = title || 'Gambar';
+        contentElement.style.maxWidth = '100%';
+        contentElement.style.height = 'auto';
+        contentElement.style.display = 'block';
+        contentElement.style.margin = '0 auto';
+    } else {
+        // Untuk semua konten lain (YouTube, Google Drive, Docs, Sheets, PDF, dll)
+        contentElement = document.createElement('iframe');
+        contentElement.src = embedUrl;
+        contentElement.title = title || 'Konten';
+        contentElement.allow = "fullscreen";
+        contentElement.style.width = '100%';
+        contentElement.style.height = '100%';
+        contentElement.style.border = 'none';
+        contentElement.setAttribute('frameborder', '0');
+        contentElement.setAttribute('allowfullscreen', 'true');
+        contentElement.setAttribute('allow', 'autoplay; fullscreen');
         
-        // Konversi URL ke format embed
-        const embedUrl = getEmbedUrl(url);
-        console.log(`🔗 Original URL: ${url}`);
-        console.log(`🔗 Embed URL: ${embedUrl}`);
+        // Untuk YouTube, tambahkan parameter tambahan
+        if (contentType === 'youtube') {
+            contentElement.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen');
+        }
+    }
+    
+    contentDiv.appendChild(contentElement);
+    contentWrapper.appendChild(contentDiv);
+    
+    container.appendChild(header);
+    container.appendChild(contentWrapper);
+    overlay.appendChild(container);
+    
+    document.body.appendChild(overlay);
+    
+    // Simpan referensi
+    currentPopup = {
+        overlay,
+        container,
+        contentDiv,
+        contentElement,
+        zoomValue,
+        currentZoom: 100,
+        originalUrl: url,
+        embedUrl: embedUrl
+    };
+    
+    // Zoom logic
+    function updateZoom() {
+        const zoom = currentPopup.currentZoom / 100;
+        currentPopup.contentDiv.style.transform = `scale(${zoom})`;
         
-        // Buat elemen popup
-        const overlay = document.createElement('div');
-        overlay.className = 'popup-overlay';
-        
-        const container = document.createElement('div');
-        container.className = 'popup-container';
-        
-        // Header
-        const header = document.createElement('div');
-        header.className = 'popup-header';
-        
-        const titleSpan = document.createElement('div');
-        titleSpan.className = 'popup-title';
-        titleSpan.innerHTML = `📋 ${title || 'Popup'}`;
-        
-        const toolbar = document.createElement('div');
-        toolbar.className = 'popup-toolbar';
-        
-        // Zoom out button
-        const zoomOutBtn = document.createElement('button');
-        zoomOutBtn.className = 'popup-btn';
-        zoomOutBtn.innerHTML = '<span class="emoji">🔍</span><span>−</span>';
-        zoomOutBtn.title = 'Zoom Out (Ctrl + -)';
-        
-        // Zoom value display
-        const zoomValue = document.createElement('span');
-        zoomValue.className = 'zoom-value';
-        zoomValue.textContent = '100%';
-        
-        // Zoom in button
-        const zoomInBtn = document.createElement('button');
-        zoomInBtn.className = 'popup-btn';
-        zoomInBtn.innerHTML = '<span class="emoji">🔍</span><span>+</span>';
-        zoomInBtn.title = 'Zoom In (Ctrl + +)';
-        
-        // Reset zoom button
-        const resetBtn = document.createElement('button');
-        resetBtn.className = 'popup-btn';
-        resetBtn.innerHTML = '<span>⟳</span><span>100%</span>';
-        resetBtn.title = 'Reset Zoom (Ctrl + 0)';
-        
-        // Buka di tab baru button
-        const newTabBtn = document.createElement('button');
-        newTabBtn.className = 'popup-btn';
-        newTabBtn.innerHTML = '<span>🔗</span><span>Tab Baru</span>';
-        newTabBtn.title = 'Buka di Tab Baru';
-        
-        // Fullscreen button
-        const fullscreenBtn = document.createElement('button');
-        fullscreenBtn.className = 'popup-btn';
-        fullscreenBtn.innerHTML = '<span>⤢</span><span>Fullscreen</span>';
-        fullscreenBtn.title = 'Fullscreen';
-        
-        // Close button
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'popup-btn popup-btn-close';
-        closeBtn.innerHTML = '<span>✕</span><span>Tutup</span>';
-        closeBtn.title = 'Tutup (ESC)';
-        
-        toolbar.appendChild(zoomOutBtn);
-        toolbar.appendChild(zoomValue);
-        toolbar.appendChild(zoomInBtn);
-        toolbar.appendChild(resetBtn);
-        toolbar.appendChild(newTabBtn);
-        toolbar.appendChild(fullscreenBtn);
-        toolbar.appendChild(closeBtn);
-        
-        header.appendChild(titleSpan);
-        header.appendChild(toolbar);
-        
-        // Content wrapper
-        const contentWrapper = document.createElement('div');
-        contentWrapper.className = 'popup-content-wrapper';
-        
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'popup-content';
-        
-        // Tentukan jenis konten
-        const contentType = getContentType(embedUrl);
-        let contentElement;
-        
-        if (contentType === 'image') {
-            contentElement = document.createElement('img');
-            contentElement.src = embedUrl;
-            contentElement.alt = title || 'Gambar';
-            contentElement.style.maxWidth = '100%';
-            contentElement.style.height = 'auto';
-        } else {
-            // Default: iframe
-            contentElement = document.createElement('iframe');
-            contentElement.src = embedUrl;
-            contentElement.title = title || 'Konten';
-            contentElement.allow = "fullscreen";
-            contentElement.style.width = '100%';
-            contentElement.style.height = '100%';
-            contentElement.style.border = 'none';
-            contentElement.setAttribute('frameborder', '0');
-            contentElement.setAttribute('allowfullscreen', 'true');
-            contentElement.setAttribute('allow', 'autoplay; fullscreen');
+        if (currentPopup.contentElement.tagName === 'IFRAME') {
+            currentPopup.contentDiv.style.width = `${100 / zoom}%`;
+            currentPopup.contentDiv.style.height = `${100 / zoom}%`;
         }
         
-        contentDiv.appendChild(contentElement);
-        contentWrapper.appendChild(contentDiv);
-        
-        container.appendChild(header);
-        container.appendChild(contentWrapper);
-        overlay.appendChild(container);
-        
-        document.body.appendChild(overlay);
-        
-        // Simpan referensi
-        currentPopup = {
-            overlay,
-            container,
-            contentDiv,
-            contentElement,
-            zoomValue,
-            currentZoom: 100,
-            originalUrl: url,
-            embedUrl: embedUrl
-        };
-        
-        // Zoom logic
-        function updateZoom() {
-            const zoom = currentPopup.currentZoom / 100;
-            currentPopup.contentDiv.style.transform = `scale(${zoom})`;
-            
-            if (currentPopup.contentElement.tagName === 'IFRAME') {
-                currentPopup.contentDiv.style.width = `${100 / zoom}%`;
-                currentPopup.contentDiv.style.height = `${100 / zoom}%`;
-            }
-            
-            currentPopup.zoomValue.textContent = `${currentPopup.currentZoom}%`;
-        }
-        
-        function zoomIn() {
-            if (currentPopup.currentZoom < 200) {
-                currentPopup.currentZoom = Math.min(currentPopup.currentZoom + 10, 200);
-                updateZoom();
-            }
-        }
-        
-        function zoomOut() {
-            if (currentPopup.currentZoom > 50) {
-                currentPopup.currentZoom = Math.max(currentPopup.currentZoom - 10, 50);
-                updateZoom();
-            }
-        }
-        
-        function resetZoom() {
-            currentPopup.currentZoom = 100;
+        currentPopup.zoomValue.textContent = `${currentPopup.currentZoom}%`;
+    }
+    
+    function zoomIn() {
+        if (currentPopup.currentZoom < 200) {
+            currentPopup.currentZoom = Math.min(currentPopup.currentZoom + 10, 200);
             updateZoom();
         }
-        
-        // Event listeners
-        zoomInBtn.onclick = zoomIn;
-        zoomOutBtn.onclick = zoomOut;
-        resetBtn.onclick = resetZoom;
-        
-        newTabBtn.onclick = () => {
-            window.open(currentPopup.originalUrl, '_blank');
-        };
-        
-        fullscreenBtn.onclick = () => {
-            if (container.requestFullscreen) {
-                container.requestFullscreen();
-            } else if (container.webkitRequestFullscreen) {
-                container.webkitRequestFullscreen();
-            } else if (container.msRequestFullscreen) {
-                container.msRequestFullscreen();
-            }
-        };
-        
-        const closePopupHandler = () => closePopup();
-        closeBtn.onclick = closePopupHandler;
-        overlay.onclick = (e) => {
-            if (e.target === overlay) closePopupHandler();
-        };
-        
-        // Keyboard shortcuts
-        const keyboardHandler = (e) => {
-            if (!currentPopup) return;
-            
-            switch(e.key) {
-                case 'Escape':
-                    closePopupHandler();
-                    break;
-                case '+':
-                case '=':
-                    if (e.ctrlKey) {
-                        e.preventDefault();
-                        zoomIn();
-                    }
-                    break;
-                case '-':
-                    if (e.ctrlKey) {
-                        e.preventDefault();
-                        zoomOut();
-                    }
-                    break;
-                case '0':
-                    if (e.ctrlKey) {
-                        e.preventDefault();
-                        resetZoom();
-                    }
-                    break;
-            }
-        };
-        
-        document.addEventListener('keydown', keyboardHandler);
-        currentPopup.keyboardHandler = keyboardHandler;
-        
-        // Handle iframe load error
-        if (contentElement.tagName === 'IFRAME') {
-            setTimeout(() => {
-                try {
-                    const iframeDoc = contentElement.contentDocument || contentElement.contentWindow?.document;
-                    if (!iframeDoc || !iframeDoc.body || iframeDoc.body.innerHTML === '') {
-                        // Mungkin error, tapi biarkan jika konten tetap loading
-                    }
-                } catch (e) {
-                    console.warn('Cannot access iframe content (cross-origin)');
-                }
-            }, 3000);
+    }
+    
+    function zoomOut() {
+        if (currentPopup.currentZoom > 50) {
+            currentPopup.currentZoom = Math.max(currentPopup.currentZoom - 10, 50);
+            updateZoom();
         }
-        
+    }
+    
+    function resetZoom() {
+        currentPopup.currentZoom = 100;
         updateZoom();
     }
+    
+    // Event listeners
+    zoomInBtn.onclick = zoomIn;
+    zoomOutBtn.onclick = zoomOut;
+    resetBtn.onclick = resetZoom;
+    
+    newTabBtn.onclick = () => {
+        window.open(currentPopup.originalUrl, '_blank');
+    };
+    
+    fullscreenBtn.onclick = () => {
+        if (container.requestFullscreen) {
+            container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) {
+            container.webkitRequestFullscreen();
+        } else if (container.msRequestFullscreen) {
+            container.msRequestFullscreen();
+        }
+    };
+    
+    const closePopupHandler = () => closePopup();
+    closeBtn.onclick = closePopupHandler;
+    overlay.onclick = (e) => {
+        if (e.target === overlay) closePopupHandler();
+    };
+    
+    // Keyboard shortcuts
+    const keyboardHandler = (e) => {
+        if (!currentPopup) return;
+        
+        switch(e.key) {
+            case 'Escape':
+                closePopupHandler();
+                break;
+            case '+':
+            case '=':
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    zoomIn();
+                }
+                break;
+            case '-':
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    zoomOut();
+                }
+                break;
+            case '0':
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    resetZoom();
+                }
+                break;
+        }
+    };
+    
+    document.addEventListener('keydown', keyboardHandler);
+    currentPopup.keyboardHandler = keyboardHandler;
+    
+    updateZoom();
+}
     
     function closePopup() {
         if (currentPopup) {
