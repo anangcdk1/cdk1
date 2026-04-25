@@ -110,33 +110,6 @@
             pointer-events: none;
         }
 
-        .highlight-area:hover {
-            background: rgba(0, 255, 0, 0.5);
-            border: 2px solid #ffaa00;
-        }
-
-        /* Tombol toggle highlight */
-        .toggle-highlight-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #ffd700;
-            color: #1a3a1a;
-            border: none;
-            border-radius: 50px;
-            padding: 10px 20px;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
-        }
-
-        .toggle-highlight-btn:hover {
-            background: #ffed4a;
-            transform: scale(1.05);
-        }
-
         .pokja-sidebar {
             width: 45px;
             background: linear-gradient(135deg, #0d3b4f 0%, #0a2e3f 100%);
@@ -220,15 +193,12 @@
     // Konfigurasi highlight (warna ditentukan di kode)
     const HIGHLIGHT_CONFIG = {
         defaultColor: 'rgba(0, 255, 0, 0.25)',
-        borderColor: '#ffd700',
-        hoverColor: 'rgba(0, 255, 0, 0.5)',
-        hoverBorderColor: '#ffaa00'
+        borderColor: '#ffd700'
     };
     
     let pagesData = [];
     let klikData = [];
     let currentPageId = 'index';
-    let highlightEnabled = false;
     let currentHighlightOverlay = null;
     
     // ============================================================
@@ -363,14 +333,12 @@
     // FUNGSI MEMBUAT AREA KLIK
     // ============================================================
     
-    // Fungsi untuk menampilkan highlight overlay
+    // Fungsi untuk menampilkan highlight overlay berdasarkan setting di sheet
     function showHighlightOverlay(areas, imgElement, scaleX, scaleY) {
         // Hapus overlay lama
         if (currentHighlightOverlay) {
             currentHighlightOverlay.remove();
         }
-        
-        if (!highlightEnabled) return;
         
         const wrapper = document.querySelector('.image-wrapper');
         if (!wrapper) return;
@@ -379,10 +347,6 @@
         overlay.className = 'highlight-overlay';
         
         areas.forEach(area => {
-            // Cek apakah area ini perlu highlight (show_highlight = ON/TRUE)
-            const showHighlight = String(area.show_highlight || '').toUpperCase();
-            if (showHighlight !== 'ON' && showHighlight !== 'TRUE' && showHighlight !== 'YES') return;
-            
             if (!area.coords || area.coords.trim() === '') return;
             
             const coordsParts = area.coords.split(',').map(Number);
@@ -405,15 +369,12 @@
                         highlightDiv.style.background = HIGHLIGHT_CONFIG.defaultColor;
                         highlightDiv.style.border = `2px solid ${HIGHLIGHT_CONFIG.borderColor}`;
                         highlightDiv.setAttribute('data-title', area.title);
-                        
-                        // Tooltip sederhana
                         highlightDiv.title = area.title;
                         
                         overlay.appendChild(highlightDiv);
                     }
                     break;
                 case 'circle':
-                    // Untuk circle, buat div bulat (sederhana)
                     if (coordsParts.length === 3) {
                         const cx = Math.round(coordsParts[0] * scaleX);
                         const cy = Math.round(coordsParts[1] * scaleY);
@@ -434,7 +395,6 @@
                     }
                     break;
                 case 'poly':
-                    // Untuk poly, highlight lebih kompleks, skip dulu atau buat bounding box
                     if (coordsParts.length >= 6) {
                         let minX = coordsParts[0], maxX = coordsParts[0];
                         let minY = coordsParts[1], maxY = coordsParts[1];
@@ -466,9 +426,11 @@
             }
         });
         
-        wrapper.style.position = 'relative';
-        wrapper.appendChild(overlay);
-        currentHighlightOverlay = overlay;
+        if (overlay.children.length > 0) {
+            wrapper.style.position = 'relative';
+            wrapper.appendChild(overlay);
+            currentHighlightOverlay = overlay;
+        }
     }
     
     function createClickableAreas(pageId, imgElement, mapElement) {
@@ -515,7 +477,7 @@
         // Kosongkan map
         mapElement.innerHTML = '';
         
-        // Simpan area untuk highlight
+        // Simpan area untuk highlight (yang show_highlight = ON)
         const highlightAreas = [];
         
         // Area dari Google Sheet (termasuk ALL)
@@ -590,7 +552,7 @@
             
             mapElement.appendChild(areaElement);
             
-            // Simpan untuk highlight (jika show_highlight aktif)
+            // Cek apakah area ini perlu highlight (show_highlight = ON/TRUE)
             const showHighlight = String(area.show_highlight || '').toUpperCase();
             if (showHighlight === 'ON' || showHighlight === 'TRUE' || showHighlight === 'YES') {
                 highlightAreas.push(area);
@@ -600,30 +562,13 @@
         console.log(`✅ Total area dibuat: ${mapElement.children.length}`);
         imgElement.setAttribute('usemap', '#dynamicMap');
         
-        // Tampilkan highlight overlay
-        if (highlightEnabled) {
+        // Tampilkan highlight overlay untuk area yang membutuhkan
+        if (highlightAreas.length > 0) {
             showHighlightOverlay(highlightAreas, imgElement, scaleX, scaleY);
         }
         
         if (areasForPage.length > 0) {
             console.log('✅ Area klik berhasil dibuat! Coba klik pada area yang sesuai.');
-        }
-    }
-    
-    // Fungsi toggle highlight
-    function toggleHighlight() {
-        highlightEnabled = !highlightEnabled;
-        const btn = document.getElementById('toggleHighlightBtn');
-        if (btn) {
-            btn.textContent = highlightEnabled ? '🔲 Sembunyikan Area' : '🔲 Tampilkan Area';
-            btn.style.background = highlightEnabled ? '#ffaa00' : '#ffd700';
-        }
-        
-        // Refresh area untuk update highlight
-        const img = document.getElementById('mainImage');
-        const mapEl = document.getElementById('dynamicMap');
-        if (img && mapEl && img.complete && img.naturalHeight !== 0) {
-            createClickableAreas(currentPageId, img, mapEl);
         }
     }
     
@@ -696,7 +641,6 @@
                     </div>
                 </div>
             </div>
-            <button id="toggleHighlightBtn" class="toggle-highlight-btn">🔲 Tampilkan Area</button>
         `;
         
         document.getElementById('app').innerHTML = html;
@@ -726,12 +670,6 @@
                 }
             });
         });
-        
-        // Event listener untuk tombol toggle highlight
-        const toggleBtn = document.getElementById('toggleHighlightBtn');
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', toggleHighlight);
-        }
         
         const img = document.getElementById('mainImage');
         const mapEl = document.getElementById('dynamicMap');
