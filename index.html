@@ -89,16 +89,7 @@
             height: auto;
             display: block;
         }
-        /* PERBAIKAN: Mengubah kursor menjadi pointer di area yang bisa diklik */
-        .image-wrapper area,
-        map area {
-            cursor: pointer;
-        }
-        
-        /* Alternatif: semua map */
-        map {
-            cursor: pointer;
-        }
+
         .pokja-sidebar {
             width: 45px;
             background: linear-gradient(135deg, #0d3b4f 0%, #0a2e3f 100%);
@@ -151,6 +142,15 @@
             text-align: center;
             padding: 50px;
             color: white;
+            font-size: 18px;
+        }
+
+        .error-message {
+            background: rgba(255,0,0,0.2);
+            border: 2px solid #ff4444;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px;
         }
     </style>
 </head>
@@ -167,7 +167,7 @@
     
     const SHEET_GID = {
         page: '0',
-        klik: '1'
+        klik: '475336072'  // Ganti dengan GID yang benar dari sheet "klik"
     };
     
     // Social Media Links untuk area klik
@@ -220,6 +220,7 @@
             return [];
         }
         
+        // Parse headers dengan lebih baik
         let headers = [];
         let inQuote = false;
         let currentHeader = '';
@@ -236,6 +237,8 @@
             }
         }
         headers.push(currentHeader.trim().replace(/^"|"$/g, ''));
+        
+        console.log('📋 Headers:', headers);
         
         for (let i = 1; i < lines.length; i++) {
             if (lines[i].trim() === '') continue;
@@ -287,6 +290,14 @@
             console.log(`✅ Pages loaded: ${pagesData.length} rows`);
             console.log(`✅ Klik areas loaded: ${klikData.length} rows`);
             
+            // Debug data klik
+            if (klikData.length > 0) {
+                console.log('📊 Sample klik data:', klikData[0]);
+                console.log('📊 All klik data:', klikData);
+            } else {
+                console.warn('⚠️ Tidak ada data di sheet klik!');
+            }
+            
             if (pagesData.length === 0) {
                 console.error('❌ No data in "page" sheet.');
                 return false;
@@ -303,24 +314,54 @@
     // FUNGSI MEMBUAT AREA KLIK
     // ============================================================
     function createClickableAreas(pageId, imgElement, mapElement) {
-        if (!imgElement || !mapElement) return;
+        if (!imgElement || !mapElement) {
+            console.error('❌ imgElement atau mapElement null');
+            return;
+        }
         
-        const areasForPage = klikData.filter(area => area.page_id === pageId && area.is_active === 'TRUE');
+        // Filter area untuk page ini
+        const areasForPage = klikData.filter(area => {
+            if (!area.page_id || area.page_id !== pageId) return false;
+            const isActive = String(area.is_active || '').toUpperCase();
+            return isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
+        });
+        
+        console.log(`📍 Area untuk page "${pageId}": ${areasForPage.length} area ditemukan`);
+        
+        if (areasForPage.length === 0) {
+            console.warn(`⚠️ Tidak ada area klik untuk page "${pageId}"`);
+        }
         
         const currentWidth = imgElement.clientWidth;
         const currentHeight = imgElement.clientHeight;
-        if (currentWidth === 0 || currentHeight === 0) return;
         
-        const pageInfo = pagesData.find(p => p.page_id === pageId);
-        const originalWidth = parseInt(pageInfo?.original_width) || 1512;
-        const originalHeight = parseInt(pageInfo?.original_height) || 1023;
+        console.log(`📐 Ukuran gambar saat ini: ${currentWidth} x ${currentHeight}`);
+        
+        if (currentWidth === 0 || currentHeight === 0) {
+            console.warn('⚠️ Ukuran gambar 0, tunggu load');
+            return;
+        }
+        
+        // Gunakan dimensi asli dari gambar jika tidak ada di data
+        const originalWidth = imgElement.naturalWidth || currentWidth;
+        const originalHeight = imgElement.naturalHeight || currentHeight;
         const scaleX = currentWidth / originalWidth;
         const scaleY = currentHeight / originalHeight;
         
+        console.log(`📏 Scale: ${scaleX.toFixed(3)} x ${scaleY.toFixed(3)} (Original: ${originalWidth}x${originalHeight})`);
+        
+        // Kosongkan map
         mapElement.innerHTML = '';
         
         // Area dari Google Sheet
-        areasForPage.forEach(area => {
+        areasForPage.forEach((area, idx) => {
+            console.log(`📌 Area ${idx+1}: ${area.title} | shape: ${area.shape} | coords: ${area.coords}`);
+            
+            if (!area.coords || area.coords.trim() === '') {
+                console.warn(`⚠️ Area ${area.title} tidak memiliki koordinat`);
+                return;
+            }
+            
             const coordsParts = area.coords.split(',').map(Number);
             let scaledCoords = '';
             
@@ -328,6 +369,7 @@
                 case 'rect':
                     if (coordsParts.length === 4) {
                         scaledCoords = `${Math.round(coordsParts[0] * scaleX)},${Math.round(coordsParts[1] * scaleY)},${Math.round(coordsParts[2] * scaleX)},${Math.round(coordsParts[3] * scaleY)}`;
+                        console.log(`  → Rect scaled: ${scaledCoords}`);
                     }
                     break;
                 case 'circle':
@@ -346,7 +388,13 @@
                     scaledCoords = scaledPoints.join(',');
                     break;
                 default:
+                    console.warn(`⚠️ Unknown shape: ${area.shape}`);
                     return;
+            }
+            
+            if (!scaledCoords) {
+                console.warn(`⚠️ Gagal membuat koordinat untuk ${area.title}`);
+                return;
             }
             
             const areaElement = document.createElement('area');
@@ -354,16 +402,23 @@
             areaElement.setAttribute('coords', scaledCoords);
             areaElement.setAttribute('title', area.title);
             areaElement.setAttribute('alt', area.title);
+            areaElement.style.cursor = 'pointer';
             
             if (area.target_page && area.target_page !== '') {
                 areaElement.addEventListener('click', (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
+                    console.log(`🔘 Diklik: ${area.title} → target: ${area.target_page}`);
+                    
                     // Cek apakah target_page adalah URL
                     if (area.target_page.startsWith('http://') || area.target_page.startsWith('https://')) {
                         window.open(area.target_page, '_blank');
                     } else if (pagesData.find(p => p.page_id === area.target_page)) {
                         currentPageId = area.target_page;
                         renderPage();
+                    } else {
+                        console.warn(`⚠️ Target page "${area.target_page}" tidak ditemukan di sheet page`);
+                        alert(`Halaman "${area.target_page}" belum tersedia`);
                     }
                 });
             }
@@ -381,16 +436,25 @@
             areaElement.setAttribute('coords', scaledCoords);
             areaElement.setAttribute('title', `${social.icon} ${social.title}`);
             areaElement.setAttribute('alt', social.title);
+            areaElement.style.cursor = 'pointer';
             
             areaElement.addEventListener('click', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
+                console.log(`🔘 Social media diklik: ${social.title}`);
                 window.open(social.url, '_blank');
             });
             
             mapElement.appendChild(areaElement);
         });
         
+        console.log(`✅ Total area dibuat: ${mapElement.children.length}`);
         imgElement.setAttribute('usemap', '#dynamicMap');
+        
+        // Debug: tampilkan visualisasi area (opsional)
+        if (areasForPage.length > 0) {
+            console.log('✅ Area klik berhasil dibuat! Coba klik pada area yang sesuai.');
+        }
     }
     
     // ============================================================
@@ -466,22 +530,26 @@
         
         document.getElementById('app').innerHTML = html;
         
+        // Event listener untuk top menu
         document.querySelectorAll('.page-nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const pageId = link.getAttribute('data-page');
                 if (pageId) {
+                    console.log(`🔄 Pindah ke halaman: ${pageId}`);
                     currentPageId = pageId;
                     renderPage();
                 }
             });
         });
         
+        // Event listener untuk sidebar menu
         document.querySelectorAll('.pokja-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 const pageId = btn.getAttribute('data-page');
                 if (pageId) {
+                    console.log(`🔄 Pindah ke halaman (sidebar): ${pageId}`);
                     currentPageId = pageId;
                     renderPage();
                 }
@@ -498,20 +566,29 @@
             this.style.minHeight = '200px';
         };
         
+        // Buat area klik setelah gambar load
         if (img.complete && img.naturalHeight !== 0) {
+            console.log('🖼️ Gambar sudah complete, langsung buat area');
             createClickableAreas(currentPageId, img, mapEl);
             setSidebarHeight(img);
         } else {
             img.addEventListener('load', () => {
+                console.log('🖼️ Gambar loaded, dimensi:', img.naturalWidth, 'x', img.naturalHeight);
                 createClickableAreas(currentPageId, img, mapEl);
                 setSidebarHeight(img);
             });
         }
         
+        // Resize handler
+        let resizeTimeout;
         window.addEventListener('resize', () => {
-            setTimeout(() => {
-                createClickableAreas(currentPageId, img, mapEl);
-                setSidebarHeight(img);
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (img && img.clientHeight > 0) {
+                    console.log('📱 Resize detected, update areas');
+                    createClickableAreas(currentPageId, img, mapEl);
+                    setSidebarHeight(img);
+                }
             }, 100);
         });
     }
@@ -529,10 +606,12 @@
             errorMsg += '1. <b>Sheet sudah dipublish?</b> (File → Share → Publish to web → CSV)<br>';
             errorMsg += '2. <b>Sheet "page"</b> sudah diisi minimal 1 baris?<br>';
             errorMsg += '3. <b>Pastikan sheet bisa diakses publik</b><br>';
-            document.getElementById('app').innerHTML = `<div class="loading">${errorMsg}</div>`;
+            errorMsg += '<br><b>Tekan F12 untuk melihat detail error di console</b>';
+            document.getElementById('app').innerHTML = `<div class="loading"><div class="error-message">${errorMsg}</div></div>`;
         }
     }
     
+    // Jalankan init
     init();
 </script>
 </body>
