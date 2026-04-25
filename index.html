@@ -90,7 +90,6 @@
             display: block;
         }
 
-        /* Highlight overlay untuk visualisasi area klik */
         .highlight-overlay {
             position: absolute;
             top: 0;
@@ -103,8 +102,8 @@
 
         .highlight-area {
             position: absolute;
-            background: rgba(0, 0, 0);
-            border: 2px solid #ffd700;
+            background: rgba(0, 0, 0, 0.25);
+            border: 2px solid #000000;
             box-sizing: border-box;
             transition: all 0.2s ease;
             pointer-events: none;
@@ -187,13 +186,13 @@
     
     const SHEET_GID = {
         page: '0',
-        klik: '475336072'  // Ganti dengan GID yang benar dari sheet "klik"
+        klik: '475336072'
     };
     
-    // Konfigurasi highlight (warna ditentukan di kode)
+    // Konfigurasi highlight (warna hitam)
     const HIGHLIGHT_CONFIG = {
-        defaultColor: 'rgba(0, 0, 0)',
-        borderColor: '#ffd700'
+        defaultColor: 'rgba(0, 0, 0, 0.25)',
+        borderColor: '#000000'
     };
     
     let pagesData = [];
@@ -202,7 +201,7 @@
     let currentHighlightOverlay = null;
     
     // ============================================================
-    // FUNGSI BACA GOOGLE SHEET (tanpa CORS)
+    // FUNGSI BACA GOOGLE SHEET
     // ============================================================
     async function fetchSheetAsCSV(gid) {
         const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
@@ -239,7 +238,6 @@
             return [];
         }
         
-        // Parse headers dengan lebih baik
         let headers = [];
         let inQuote = false;
         let currentHeader = '';
@@ -309,10 +307,8 @@
             console.log(`✅ Pages loaded: ${pagesData.length} rows`);
             console.log(`✅ Klik areas loaded: ${klikData.length} rows`);
             
-            // Debug data klik
             if (klikData.length > 0) {
                 console.log('📊 Sample klik data:', klikData[0]);
-                console.log('📊 All klik data:', klikData);
             } else {
                 console.warn('⚠️ Tidak ada data di sheet klik!');
             }
@@ -333,15 +329,16 @@
     // FUNGSI MEMBUAT AREA KLIK
     // ============================================================
     
-    // Fungsi untuk menampilkan highlight overlay berdasarkan setting di sheet
-    function showHighlightOverlay(areas, imgElement, scaleX, scaleY) {
-        // Hapus overlay lama
+    function showHighlightOverlay(areas, imgElement, referenceWidth, referenceHeight, currentWidth, currentHeight) {
         if (currentHighlightOverlay) {
             currentHighlightOverlay.remove();
         }
         
         const wrapper = document.querySelector('.image-wrapper');
         if (!wrapper) return;
+        
+        const scaleX = currentWidth / referenceWidth;
+        const scaleY = currentHeight / referenceHeight;
         
         const overlay = document.createElement('div');
         overlay.className = 'highlight-overlay';
@@ -368,7 +365,6 @@
                         highlightDiv.style.height = height + 'px';
                         highlightDiv.style.background = HIGHLIGHT_CONFIG.defaultColor;
                         highlightDiv.style.border = `2px solid ${HIGHLIGHT_CONFIG.borderColor}`;
-                        highlightDiv.setAttribute('data-title', area.title);
                         highlightDiv.title = area.title;
                         
                         overlay.appendChild(highlightDiv);
@@ -443,46 +439,43 @@
         const areasForPage = klikData.filter(area => {
             const isActive = String(area.is_active || '').toUpperCase();
             const isValidActive = isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
-            
-            // Area dengan page_id = current page ATAU page_id = "ALL"
             const isValidPage = (area.page_id === pageId) || (area.page_id === 'ALL');
-            
             return isValidPage && isValidActive;
         });
         
         console.log(`📍 Area untuk page "${pageId}" + ALL: ${areasForPage.length} area ditemukan`);
         
-        if (areasForPage.length === 0) {
-            console.warn(`⚠️ Tidak ada area klik untuk page "${pageId}"`);
-        }
-        
         const currentWidth = imgElement.clientWidth;
         const currentHeight = imgElement.clientHeight;
         
-        console.log(`📐 Ukuran gambar saat ini: ${currentWidth} x ${currentHeight}`);
+        console.log(`📐 Ukuran gambar tampilan: ${currentWidth} x ${currentHeight}`);
         
         if (currentWidth === 0 || currentHeight === 0) {
             console.warn('⚠️ Ukuran gambar 0, tunggu load');
             return;
         }
         
-        // Gunakan dimensi asli dari gambar
-        const originalWidth = imgElement.naturalWidth || currentWidth;
-        const originalHeight = imgElement.naturalHeight || currentHeight;
-        const scaleX = currentWidth / originalWidth;
-        const scaleY = currentHeight / originalHeight;
+        // 🔥 PERBAIKAN: Gunakan ukuran referensi dari sheet (1512x1023)
+        const pageInfo = pagesData.find(p => p.page_id === pageId);
+        const referenceWidth = parseInt(pageInfo?.original_width) || 1512;
+        const referenceHeight = parseInt(pageInfo?.original_height) || 1023;
         
-        console.log(`📏 Scale: ${scaleX.toFixed(3)} x ${scaleY.toFixed(3)} (Original: ${originalWidth}x${originalHeight})`);
+        // Hitung scale berdasarkan referensi dari sheet
+        const scaleX = currentWidth / referenceWidth;
+        const scaleY = currentHeight / referenceHeight;
+        
+        console.log(`📏 Referensi dari sheet: ${referenceWidth}x${referenceHeight}`);
+        console.log(`📏 Scale: ${scaleX.toFixed(4)} x ${scaleY.toFixed(4)}`);
         
         // Kosongkan map
         mapElement.innerHTML = '';
         
-        // Simpan area untuk highlight (yang show_highlight = ON)
+        // Simpan area untuk highlight
         const highlightAreas = [];
         
-        // Area dari Google Sheet (termasuk ALL)
+        // Area dari Google Sheet
         areasForPage.forEach((area, idx) => {
-            console.log(`📌 Area ${idx+1}: ${area.title} | shape: ${area.shape} | coords: ${area.coords} | page_id: ${area.page_id}`);
+            console.log(`📌 Area ${idx+1}: ${area.title} | coords: ${area.coords} | page_id: ${area.page_id}`);
             
             if (!area.coords || area.coords.trim() === '') {
                 console.warn(`⚠️ Area ${area.title} tidak memiliki koordinat`);
@@ -496,7 +489,7 @@
                 case 'rect':
                     if (coordsParts.length === 4) {
                         scaledCoords = `${Math.round(coordsParts[0] * scaleX)},${Math.round(coordsParts[1] * scaleY)},${Math.round(coordsParts[2] * scaleX)},${Math.round(coordsParts[3] * scaleY)}`;
-                        console.log(`  → Rect scaled: ${scaledCoords}`);
+                        console.log(`  → Rect: ${area.coords} → ${scaledCoords}`);
                     }
                     break;
                 case 'circle':
@@ -537,14 +530,13 @@
                     e.stopPropagation();
                     console.log(`🔘 Diklik: ${area.title} → target: ${area.target_page}`);
                     
-                    // Cek apakah target_page adalah URL
                     if (area.target_page.startsWith('http://') || area.target_page.startsWith('https://')) {
                         window.open(area.target_page, '_blank');
                     } else if (pagesData.find(p => p.page_id === area.target_page)) {
                         currentPageId = area.target_page;
                         renderPage();
                     } else {
-                        console.warn(`⚠️ Target page "${area.target_page}" tidak ditemukan di sheet page`);
+                        console.warn(`⚠️ Target page "${area.target_page}" tidak ditemukan`);
                         alert(`Halaman "${area.target_page}" belum tersedia`);
                     }
                 });
@@ -552,7 +544,7 @@
             
             mapElement.appendChild(areaElement);
             
-            // Cek apakah area ini perlu highlight (show_highlight = ON/TRUE)
+            // Cek apakah perlu highlight
             const showHighlight = String(area.show_highlight || '').toUpperCase();
             if (showHighlight === 'ON' || showHighlight === 'TRUE' || showHighlight === 'YES') {
                 highlightAreas.push(area);
@@ -562,13 +554,9 @@
         console.log(`✅ Total area dibuat: ${mapElement.children.length}`);
         imgElement.setAttribute('usemap', '#dynamicMap');
         
-        // Tampilkan highlight overlay untuk area yang membutuhkan
+        // Tampilkan highlight
         if (highlightAreas.length > 0) {
-            showHighlightOverlay(highlightAreas, imgElement, scaleX, scaleY);
-        }
-        
-        if (areasForPage.length > 0) {
-            console.log('✅ Area klik berhasil dibuat! Coba klik pada area yang sesuai.');
+            showHighlightOverlay(highlightAreas, imgElement, referenceWidth, referenceHeight, currentWidth, currentHeight);
         }
     }
     
@@ -645,7 +633,6 @@
         
         document.getElementById('app').innerHTML = html;
         
-        // Event listener untuk top menu
         document.querySelectorAll('.page-nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -658,7 +645,6 @@
             });
         });
         
-        // Event listener untuk sidebar menu
         document.querySelectorAll('.pokja-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -681,26 +667,24 @@
             this.style.minHeight = '200px';
         };
         
-        // Buat area klik setelah gambar load
         if (img.complete && img.naturalHeight !== 0) {
-            console.log('🖼️ Gambar sudah complete, langsung buat area');
+            console.log('🖼️ Gambar sudah complete');
             createClickableAreas(currentPageId, img, mapEl);
             setSidebarHeight(img);
         } else {
             img.addEventListener('load', () => {
-                console.log('🖼️ Gambar loaded, dimensi:', img.naturalWidth, 'x', img.naturalHeight);
+                console.log('🖼️ Gambar loaded');
                 createClickableAreas(currentPageId, img, mapEl);
                 setSidebarHeight(img);
             });
         }
         
-        // Resize handler
         let resizeTimeout;
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
                 if (img && img.clientHeight > 0) {
-                    console.log('📱 Resize detected, update areas');
+                    console.log('📱 Resize detected');
                     createClickableAreas(currentPageId, img, mapEl);
                     setSidebarHeight(img);
                 }
@@ -726,7 +710,6 @@
         }
     }
     
-    // Jalankan init
     init();
 </script>
 </body>
