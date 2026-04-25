@@ -90,6 +90,53 @@
             display: block;
         }
 
+        /* Highlight overlay untuk visualisasi area klik */
+        .highlight-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .highlight-area {
+            position: absolute;
+            background: rgba(0, 255, 0, 0.25);
+            border: 2px solid #ffd700;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+            pointer-events: none;
+        }
+
+        .highlight-area:hover {
+            background: rgba(0, 255, 0, 0.5);
+            border: 2px solid #ffaa00;
+        }
+
+        /* Tombol toggle highlight */
+        .toggle-highlight-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #ffd700;
+            color: #1a3a1a;
+            border: none;
+            border-radius: 50px;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .toggle-highlight-btn:hover {
+            background: #ffed4a;
+            transform: scale(1.05);
+        }
+
         .pokja-sidebar {
             width: 45px;
             background: linear-gradient(135deg, #0d3b4f 0%, #0a2e3f 100%);
@@ -170,17 +217,19 @@
         klik: '475336072'  // Ganti dengan GID yang benar dari sheet "klik"
     };
     
-    // Social Media Links untuk area klik
-    const SOCIAL_MEDIA_AREAS = [
-        { shape: "rect", coords: "339,972,535,1023", title: "Instagram", url: "https://instagram.com/cdk1blora", icon: "📷" },
-        { shape: "rect", coords: "547,971,751,1023", title: "TikTok", url: "https://tiktok.com/@cdk1blora", icon: "🎵" },
-        { shape: "rect", coords: "758,976,985,1022", title: "Facebook", url: "https://facebook.com/cdk1blora", icon: "👍" },
-        { shape: "rect", coords: "1000,976,1205,1023", title: "Twitter", url: "https://twitter.com/cdk1blora", icon: "🐦" }
-    ];
+    // Konfigurasi highlight (warna ditentukan di kode)
+    const HIGHLIGHT_CONFIG = {
+        defaultColor: 'rgba(0, 255, 0, 0.25)',
+        borderColor: '#ffd700',
+        hoverColor: 'rgba(0, 255, 0, 0.5)',
+        hoverBorderColor: '#ffaa00'
+    };
     
     let pagesData = [];
     let klikData = [];
     let currentPageId = 'index';
+    let highlightEnabled = false;
+    let currentHighlightOverlay = null;
     
     // ============================================================
     // FUNGSI BACA GOOGLE SHEET (tanpa CORS)
@@ -313,20 +362,133 @@
     // ============================================================
     // FUNGSI MEMBUAT AREA KLIK
     // ============================================================
+    
+    // Fungsi untuk menampilkan highlight overlay
+    function showHighlightOverlay(areas, imgElement, scaleX, scaleY) {
+        // Hapus overlay lama
+        if (currentHighlightOverlay) {
+            currentHighlightOverlay.remove();
+        }
+        
+        if (!highlightEnabled) return;
+        
+        const wrapper = document.querySelector('.image-wrapper');
+        if (!wrapper) return;
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'highlight-overlay';
+        
+        areas.forEach(area => {
+            // Cek apakah area ini perlu highlight (show_highlight = ON/TRUE)
+            const showHighlight = String(area.show_highlight || '').toUpperCase();
+            if (showHighlight !== 'ON' && showHighlight !== 'TRUE' && showHighlight !== 'YES') return;
+            
+            if (!area.coords || area.coords.trim() === '') return;
+            
+            const coordsParts = area.coords.split(',').map(Number);
+            let left, top, width, height;
+            
+            switch(area.shape) {
+                case 'rect':
+                    if (coordsParts.length === 4) {
+                        left = Math.round(coordsParts[0] * scaleX);
+                        top = Math.round(coordsParts[1] * scaleY);
+                        width = Math.round((coordsParts[2] - coordsParts[0]) * scaleX);
+                        height = Math.round((coordsParts[3] - coordsParts[1]) * scaleY);
+                        
+                        const highlightDiv = document.createElement('div');
+                        highlightDiv.className = 'highlight-area';
+                        highlightDiv.style.left = left + 'px';
+                        highlightDiv.style.top = top + 'px';
+                        highlightDiv.style.width = width + 'px';
+                        highlightDiv.style.height = height + 'px';
+                        highlightDiv.style.background = HIGHLIGHT_CONFIG.defaultColor;
+                        highlightDiv.style.border = `2px solid ${HIGHLIGHT_CONFIG.borderColor}`;
+                        highlightDiv.setAttribute('data-title', area.title);
+                        
+                        // Tooltip sederhana
+                        highlightDiv.title = area.title;
+                        
+                        overlay.appendChild(highlightDiv);
+                    }
+                    break;
+                case 'circle':
+                    // Untuk circle, buat div bulat (sederhana)
+                    if (coordsParts.length === 3) {
+                        const cx = Math.round(coordsParts[0] * scaleX);
+                        const cy = Math.round(coordsParts[1] * scaleY);
+                        const r = Math.round(coordsParts[2] * Math.min(scaleX, scaleY));
+                        
+                        const highlightDiv = document.createElement('div');
+                        highlightDiv.className = 'highlight-area';
+                        highlightDiv.style.left = (cx - r) + 'px';
+                        highlightDiv.style.top = (cy - r) + 'px';
+                        highlightDiv.style.width = (r * 2) + 'px';
+                        highlightDiv.style.height = (r * 2) + 'px';
+                        highlightDiv.style.borderRadius = '50%';
+                        highlightDiv.style.background = HIGHLIGHT_CONFIG.defaultColor;
+                        highlightDiv.style.border = `2px solid ${HIGHLIGHT_CONFIG.borderColor}`;
+                        highlightDiv.title = area.title;
+                        
+                        overlay.appendChild(highlightDiv);
+                    }
+                    break;
+                case 'poly':
+                    // Untuk poly, highlight lebih kompleks, skip dulu atau buat bounding box
+                    if (coordsParts.length >= 6) {
+                        let minX = coordsParts[0], maxX = coordsParts[0];
+                        let minY = coordsParts[1], maxY = coordsParts[1];
+                        for (let i = 2; i < coordsParts.length; i += 2) {
+                            minX = Math.min(minX, coordsParts[i]);
+                            maxX = Math.max(maxX, coordsParts[i]);
+                            minY = Math.min(minY, coordsParts[i+1]);
+                            maxY = Math.max(maxY, coordsParts[i+1]);
+                        }
+                        left = Math.round(minX * scaleX);
+                        top = Math.round(minY * scaleY);
+                        width = Math.round((maxX - minX) * scaleX);
+                        height = Math.round((maxY - minY) * scaleY);
+                        
+                        const highlightDiv = document.createElement('div');
+                        highlightDiv.className = 'highlight-area';
+                        highlightDiv.style.left = left + 'px';
+                        highlightDiv.style.top = top + 'px';
+                        highlightDiv.style.width = width + 'px';
+                        highlightDiv.style.height = height + 'px';
+                        highlightDiv.style.background = HIGHLIGHT_CONFIG.defaultColor;
+                        highlightDiv.style.border = `2px solid ${HIGHLIGHT_CONFIG.borderColor}`;
+                        highlightDiv.style.opacity = '0.5';
+                        highlightDiv.title = area.title;
+                        
+                        overlay.appendChild(highlightDiv);
+                    }
+                    break;
+            }
+        });
+        
+        wrapper.style.position = 'relative';
+        wrapper.appendChild(overlay);
+        currentHighlightOverlay = overlay;
+    }
+    
     function createClickableAreas(pageId, imgElement, mapElement) {
         if (!imgElement || !mapElement) {
             console.error('❌ imgElement atau mapElement null');
             return;
         }
         
-        // Filter area untuk page ini
+        // Filter area untuk page ini DAN area ALL (universal)
         const areasForPage = klikData.filter(area => {
-            if (!area.page_id || area.page_id !== pageId) return false;
             const isActive = String(area.is_active || '').toUpperCase();
-            return isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
+            const isValidActive = isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
+            
+            // Area dengan page_id = current page ATAU page_id = "ALL"
+            const isValidPage = (area.page_id === pageId) || (area.page_id === 'ALL');
+            
+            return isValidPage && isValidActive;
         });
         
-        console.log(`📍 Area untuk page "${pageId}": ${areasForPage.length} area ditemukan`);
+        console.log(`📍 Area untuk page "${pageId}" + ALL: ${areasForPage.length} area ditemukan`);
         
         if (areasForPage.length === 0) {
             console.warn(`⚠️ Tidak ada area klik untuk page "${pageId}"`);
@@ -342,7 +504,7 @@
             return;
         }
         
-        // Gunakan dimensi asli dari gambar jika tidak ada di data
+        // Gunakan dimensi asli dari gambar
         const originalWidth = imgElement.naturalWidth || currentWidth;
         const originalHeight = imgElement.naturalHeight || currentHeight;
         const scaleX = currentWidth / originalWidth;
@@ -353,9 +515,12 @@
         // Kosongkan map
         mapElement.innerHTML = '';
         
-        // Area dari Google Sheet
+        // Simpan area untuk highlight
+        const highlightAreas = [];
+        
+        // Area dari Google Sheet (termasuk ALL)
         areasForPage.forEach((area, idx) => {
-            console.log(`📌 Area ${idx+1}: ${area.title} | shape: ${area.shape} | coords: ${area.coords}`);
+            console.log(`📌 Area ${idx+1}: ${area.title} | shape: ${area.shape} | coords: ${area.coords} | page_id: ${area.page_id}`);
             
             if (!area.coords || area.coords.trim() === '') {
                 console.warn(`⚠️ Area ${area.title} tidak memiliki koordinat`);
@@ -424,36 +589,41 @@
             }
             
             mapElement.appendChild(areaElement);
-        });
-        
-        // Social Media Areas
-        SOCIAL_MEDIA_AREAS.forEach(social => {
-            const coordsParts = social.coords.split(',').map(Number);
-            const scaledCoords = `${Math.round(coordsParts[0] * scaleX)},${Math.round(coordsParts[1] * scaleY)},${Math.round(coordsParts[2] * scaleX)},${Math.round(coordsParts[3] * scaleY)}`;
             
-            const areaElement = document.createElement('area');
-            areaElement.setAttribute('shape', social.shape);
-            areaElement.setAttribute('coords', scaledCoords);
-            areaElement.setAttribute('title', `${social.icon} ${social.title}`);
-            areaElement.setAttribute('alt', social.title);
-            areaElement.style.cursor = 'pointer';
-            
-            areaElement.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log(`🔘 Social media diklik: ${social.title}`);
-                window.open(social.url, '_blank');
-            });
-            
-            mapElement.appendChild(areaElement);
+            // Simpan untuk highlight (jika show_highlight aktif)
+            const showHighlight = String(area.show_highlight || '').toUpperCase();
+            if (showHighlight === 'ON' || showHighlight === 'TRUE' || showHighlight === 'YES') {
+                highlightAreas.push(area);
+            }
         });
         
         console.log(`✅ Total area dibuat: ${mapElement.children.length}`);
         imgElement.setAttribute('usemap', '#dynamicMap');
         
-        // Debug: tampilkan visualisasi area (opsional)
+        // Tampilkan highlight overlay
+        if (highlightEnabled) {
+            showHighlightOverlay(highlightAreas, imgElement, scaleX, scaleY);
+        }
+        
         if (areasForPage.length > 0) {
             console.log('✅ Area klik berhasil dibuat! Coba klik pada area yang sesuai.');
+        }
+    }
+    
+    // Fungsi toggle highlight
+    function toggleHighlight() {
+        highlightEnabled = !highlightEnabled;
+        const btn = document.getElementById('toggleHighlightBtn');
+        if (btn) {
+            btn.textContent = highlightEnabled ? '🔲 Sembunyikan Area' : '🔲 Tampilkan Area';
+            btn.style.background = highlightEnabled ? '#ffaa00' : '#ffd700';
+        }
+        
+        // Refresh area untuk update highlight
+        const img = document.getElementById('mainImage');
+        const mapEl = document.getElementById('dynamicMap');
+        if (img && mapEl && img.complete && img.naturalHeight !== 0) {
+            createClickableAreas(currentPageId, img, mapEl);
         }
     }
     
@@ -526,6 +696,7 @@
                     </div>
                 </div>
             </div>
+            <button id="toggleHighlightBtn" class="toggle-highlight-btn">🔲 Tampilkan Area</button>
         `;
         
         document.getElementById('app').innerHTML = html;
@@ -555,6 +726,12 @@
                 }
             });
         });
+        
+        // Event listener untuk tombol toggle highlight
+        const toggleBtn = document.getElementById('toggleHighlightBtn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', toggleHighlight);
+        }
         
         const img = document.getElementById('mainImage');
         const mapEl = document.getElementById('dynamicMap');
