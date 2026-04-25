@@ -171,6 +171,151 @@
             padding: 20px;
             margin: 20px;
         }
+
+        /* ============================================ */
+        /* POPUP STYLES */
+        /* ============================================ */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .popup-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            max-width: 1400px;
+            height: 85%;
+            max-height: 900px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .popup-header {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #1a3a1a 0%, #0d2e0d 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 16px 16px 0 0;
+            flex-shrink: 0;
+        }
+
+        .popup-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .popup-toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .popup-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .popup-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .popup-btn-close {
+            background: rgba(220, 53, 69, 0.8);
+        }
+
+        .popup-btn-close:hover {
+            background: rgba(220, 53, 69, 1);
+        }
+
+        .zoom-value {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            min-width: 55px;
+            text-align: center;
+        }
+
+        .popup-content-wrapper {
+            flex: 1;
+            overflow: auto;
+            padding: 0;
+            position: relative;
+            background: #f5f5f5;
+        }
+
+        .popup-content {
+            transform-origin: top left;
+            transition: transform 0.2s ease;
+            width: 100%;
+            height: 100%;
+        }
+
+        .popup-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+
+        .popup-content img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* Responsive untuk mobile */
+        @media (max-width: 768px) {
+            .popup-container {
+                width: 95%;
+                height: 90%;
+            }
+            
+            .popup-btn span:not(.emoji) {
+                display: none;
+            }
+            
+            .popup-btn {
+                padding: 6px 10px;
+            }
+            
+            .zoom-value {
+                min-width: 45px;
+                font-size: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -189,23 +334,246 @@
         klik: '475336072'
     };
     
-    // Konfigurasi highlight
+    // Konfigurasi highlight (warna hitam)
     const HIGHLIGHT_CONFIG = {
         defaultColor: 'rgba(0, 0, 0, 0.25)',
         borderColor: '#000000'
-    };
-    
-    // Konfigurasi POPUP
-    const POPUP_CONFIG = {
-        width: 1100,
-        height: 750,
-        features: 'scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
     };
     
     let pagesData = [];
     let klikData = [];
     let currentPageId = 'index';
     let currentHighlightOverlay = null;
+    let currentPopup = null;
+    
+    // ============================================================
+    // FUNGSI POPUP
+    // ============================================================
+    
+    // Membuat popup baru
+    function openPopup(url, title) {
+        // Tutup popup yang sudah ada
+        closePopup();
+        
+        // Buat elemen popup
+        const overlay = document.createElement('div');
+        overlay.className = 'popup-overlay';
+        
+        const container = document.createElement('div');
+        container.className = 'popup-container';
+        
+        // Header dengan judul dan toolbar
+        const header = document.createElement('div');
+        header.className = 'popup-header';
+        
+        const titleSpan = document.createElement('div');
+        titleSpan.className = 'popup-title';
+        titleSpan.innerHTML = `📋 ${title || 'Popup'}`;
+        
+        const toolbar = document.createElement('div');
+        toolbar.className = 'popup-toolbar';
+        
+        // Zoom out button
+        const zoomOutBtn = document.createElement('button');
+        zoomOutBtn.className = 'popup-btn';
+        zoomOutBtn.innerHTML = '<span class="emoji">🔍</span><span>−</span>';
+        zoomOutBtn.title = 'Zoom Out (Ctrl + -)';
+        
+        // Zoom value display
+        const zoomValue = document.createElement('span');
+        zoomValue.className = 'zoom-value';
+        zoomValue.textContent = '100%';
+        
+        // Zoom in button
+        const zoomInBtn = document.createElement('button');
+        zoomInBtn.className = 'popup-btn';
+        zoomInBtn.innerHTML = '<span class="emoji">🔍</span><span>+</span>';
+        zoomInBtn.title = 'Zoom In (Ctrl + +)';
+        
+        // Reset zoom button
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'popup-btn';
+        resetBtn.innerHTML = '<span>⟳</span><span>100%</span>';
+        resetBtn.title = 'Reset Zoom (Ctrl + 0)';
+        
+        // Buka di tab baru button
+        const newTabBtn = document.createElement('button');
+        newTabBtn.className = 'popup-btn';
+        newTabBtn.innerHTML = '<span>🔗</span><span>Tab Baru</span>';
+        newTabBtn.title = 'Buka di Tab Baru';
+        
+        // Fullscreen button
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'popup-btn';
+        fullscreenBtn.innerHTML = '<span>⤢</span><span>Fullscreen</span>';
+        fullscreenBtn.title = 'Fullscreen';
+        
+        // Close button
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'popup-btn popup-btn-close';
+        closeBtn.innerHTML = '<span>✕</span><span>Tutup</span>';
+        closeBtn.title = 'Tutup (ESC)';
+        
+        toolbar.appendChild(zoomOutBtn);
+        toolbar.appendChild(zoomValue);
+        toolbar.appendChild(zoomInBtn);
+        toolbar.appendChild(resetBtn);
+        toolbar.appendChild(newTabBtn);
+        toolbar.appendChild(fullscreenBtn);
+        toolbar.appendChild(closeBtn);
+        
+        header.appendChild(titleSpan);
+        header.appendChild(toolbar);
+        
+        // Content wrapper
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'popup-content-wrapper';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'popup-content';
+        
+        // Tentukan jenis konten berdasarkan URL
+        let contentElement;
+        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
+            // Gambar
+            contentElement = document.createElement('img');
+            contentElement.src = url;
+            contentElement.alt = title || 'Gambar';
+        } else {
+            // Default: iframe untuk sheet, website, dll
+            contentElement = document.createElement('iframe');
+            contentElement.src = url;
+            contentElement.title = title || 'Konten';
+            contentElement.allow = "fullscreen";
+        }
+        
+        contentDiv.appendChild(contentElement);
+        contentWrapper.appendChild(contentDiv);
+        
+        container.appendChild(header);
+        container.appendChild(contentWrapper);
+        overlay.appendChild(container);
+        
+        document.body.appendChild(overlay);
+        
+        // Simpan referensi
+        currentPopup = {
+            overlay,
+            container,
+            contentDiv,
+            contentElement,
+            zoomValue,
+            currentZoom: 100
+        };
+        
+        // Zoom logic
+        function updateZoom() {
+            const zoom = currentPopup.currentZoom / 100;
+            currentPopup.contentDiv.style.transform = `scale(${zoom})`;
+            
+            // Update lebar wrapper agar scroll horizontal berfungsi
+            const originalWidth = currentPopup.contentElement.scrollWidth || currentPopup.contentElement.clientWidth;
+            currentPopup.contentDiv.style.width = `${100 / zoom}%`;
+            currentPopup.contentDiv.style.height = `${100 / zoom}%`;
+            
+            currentPopup.zoomValue.textContent = `${currentPopup.currentZoom}%`;
+        }
+        
+        function zoomIn() {
+            if (currentPopup.currentZoom < 200) {
+                currentPopup.currentZoom = Math.min(currentPopup.currentZoom + 10, 200);
+                updateZoom();
+            }
+        }
+        
+        function zoomOut() {
+            if (currentPopup.currentZoom > 50) {
+                currentPopup.currentZoom = Math.max(currentPopup.currentZoom - 10, 50);
+                updateZoom();
+            }
+        }
+        
+        function resetZoom() {
+            currentPopup.currentZoom = 100;
+            updateZoom();
+        }
+        
+        // Event listeners untuk zoom
+        zoomInBtn.onclick = zoomIn;
+        zoomOutBtn.onclick = zoomOut;
+        resetBtn.onclick = resetZoom;
+        
+        // Buka di tab baru
+        newTabBtn.onclick = () => {
+            window.open(url, '_blank');
+        };
+        
+        // Fullscreen
+        fullscreenBtn.onclick = () => {
+            if (container.requestFullscreen) {
+                container.requestFullscreen();
+            } else if (container.webkitRequestFullscreen) {
+                container.webkitRequestFullscreen();
+            } else if (container.msRequestFullscreen) {
+                container.msRequestFullscreen();
+            }
+        };
+        
+        // Close popup
+        const closePopupHandler = () => closePopup();
+        closeBtn.onclick = closePopupHandler;
+        overlay.onclick = (e) => {
+            if (e.target === overlay) closePopupHandler();
+        };
+        
+        // Keyboard shortcuts
+        const keyboardHandler = (e) => {
+            if (!currentPopup) return;
+            
+            switch(e.key) {
+                case 'Escape':
+                    closePopupHandler();
+                    break;
+                case '+':
+                case '=':
+                    if (e.ctrlKey) {
+                        e.preventDefault();
+                        zoomIn();
+                    }
+                    break;
+                case '-':
+                    if (e.ctrlKey) {
+                        e.preventDefault();
+                        zoomOut();
+                    }
+                    break;
+                case '0':
+                    if (e.ctrlKey) {
+                        e.preventDefault();
+                        resetZoom();
+                    }
+                    break;
+            }
+        };
+        
+        document.addEventListener('keydown', keyboardHandler);
+        
+        // Simpan handler untuk cleanup
+        currentPopup.keyboardHandler = keyboardHandler;
+        
+        // Inisialisasi zoom
+        updateZoom();
+    }
+    
+    function closePopup() {
+        if (currentPopup) {
+            if (currentPopup.keyboardHandler) {
+                document.removeEventListener('keydown', currentPopup.keyboardHandler);
+            }
+            currentPopup.overlay.remove();
+            currentPopup = null;
+        }
+    }
     
     // ============================================================
     // FUNGSI BACA GOOGLE SHEET
@@ -442,7 +810,7 @@
             return;
         }
         
-        // Filter area untuk page ini DAN area ALL
+        // Filter area untuk page ini DAN area ALL (universal)
         const areasForPage = klikData.filter(area => {
             const isActive = String(area.is_active || '').toUpperCase();
             const isValidActive = isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
@@ -462,6 +830,7 @@
             return;
         }
         
+        // Gunakan ukuran referensi dari sheet (1512x1023)
         const pageInfo = pagesData.find(p => p.page_id === pageId);
         const referenceWidth = parseInt(pageInfo?.original_width) || 1512;
         const referenceHeight = parseInt(pageInfo?.original_height) || 1023;
@@ -472,10 +841,13 @@
         console.log(`📏 Referensi dari sheet: ${referenceWidth}x${referenceHeight}`);
         console.log(`📏 Scale: ${scaleX.toFixed(4)} x ${scaleY.toFixed(4)}`);
         
+        // Kosongkan map
         mapElement.innerHTML = '';
         
+        // Simpan area untuk highlight
         const highlightAreas = [];
         
+        // Area dari Google Sheet
         areasForPage.forEach((area, idx) => {
             console.log(`📌 Area ${idx+1}: ${area.title} | coords: ${area.coords} | page_id: ${area.page_id}`);
             
@@ -491,6 +863,7 @@
                 case 'rect':
                     if (coordsParts.length === 4) {
                         scaledCoords = `${Math.round(coordsParts[0] * scaleX)},${Math.round(coordsParts[1] * scaleY)},${Math.round(coordsParts[2] * scaleX)},${Math.round(coordsParts[3] * scaleY)}`;
+                        console.log(`  → Rect: ${area.coords} → ${scaledCoords}`);
                     }
                     break;
                 case 'circle':
@@ -525,6 +898,7 @@
             areaElement.setAttribute('alt', area.title);
             areaElement.style.cursor = 'pointer';
             
+            // Action type logic
             const actionType = String(area.action_type || '').toUpperCase();
             const target = area.target_page || '';
             
@@ -534,18 +908,15 @@
                     e.stopPropagation();
                     console.log(`🔘 Diklik: ${area.title} | action: ${actionType || 'internal'} | target: ${target}`);
                     
-                    // POPUP - buka di jendela popup terpisah
+                    // POPUP action
                     if (actionType === 'POPUP') {
-                        const left = (screen.width - POPUP_CONFIG.width) / 2;
-                        const top = (screen.height - POPUP_CONFIG.height) / 2;
-                        const features = `${POPUP_CONFIG.features},width=${POPUP_CONFIG.width},height=${POPUP_CONFIG.height},left=${left},top=${top}`;
-                        window.open(target, area.title, features);
+                        openPopup(target, area.title);
                     }
-                    // URL - buka di tab baru
+                    // URL action (buka di tab baru)
                     else if (actionType === 'URL' || target.startsWith('http://') || target.startsWith('https://')) {
                         window.open(target, '_blank');
                     }
-                    // Internal navigation
+                    // Internal navigation (default)
                     else if (pagesData.find(p => p.page_id === target)) {
                         currentPageId = target;
                         renderPage();
@@ -559,6 +930,7 @@
             
             mapElement.appendChild(areaElement);
             
+            // Cek apakah perlu highlight
             const showHighlight = String(area.show_highlight || '').toUpperCase();
             if (showHighlight === 'ON' || showHighlight === 'TRUE' || showHighlight === 'YES') {
                 highlightAreas.push(area);
@@ -568,6 +940,7 @@
         console.log(`✅ Total area dibuat: ${mapElement.children.length}`);
         imgElement.setAttribute('usemap', '#dynamicMap');
         
+        // Tampilkan highlight
         if (highlightAreas.length > 0) {
             showHighlightOverlay(highlightAreas, imgElement, referenceWidth, referenceHeight, currentWidth, currentHeight);
         }
