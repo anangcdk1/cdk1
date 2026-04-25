@@ -181,7 +181,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             z-index: 1000;
             backdrop-filter: blur(5px);
         }
@@ -296,6 +296,35 @@
             margin: 0 auto;
         }
 
+        .popup-error {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .popup-error h3 {
+            margin: 20px 0 10px;
+            color: #333;
+        }
+
+        .popup-error p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .popup-error button {
+            padding: 10px 20px;
+            background: #1a3a1a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
         /* Responsive untuk mobile */
         @media (max-width: 768px) {
             .popup-container {
@@ -334,7 +363,7 @@
         klik: '475336072'
     };
     
-    // Konfigurasi highlight (warna hitam)
+    // Konfigurasi highlight
     const HIGHLIGHT_CONFIG = {
         defaultColor: 'rgba(0, 0, 0, 0.25)',
         borderColor: '#000000'
@@ -347,13 +376,107 @@
     let currentPopup = null;
     
     // ============================================================
+    // FUNGSI KONVERSI URL UNTUK EMBED
+    // ============================================================
+    
+    function getEmbedUrl(url) {
+        // YouTube - format youtu.be
+        if (url.includes('youtu.be')) {
+            const videoId = url.split('youtu.be/')[1].split('?')[0];
+            return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+        }
+        
+        // YouTube - format youtube.com/watch
+        if (url.includes('youtube.com/watch')) {
+            const urlParams = new URLSearchParams(url.split('?')[1]);
+            const videoId = urlParams.get('v');
+            if (videoId) {
+                return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+            }
+        }
+        
+        // YouTube - format youtube.com/embed (sudah embed)
+        if (url.includes('youtube.com/embed')) {
+            return url;
+        }
+        
+        // Google Drive File (PDF, gambar, video)
+        if (url.includes('drive.google.com/file')) {
+            const match = url.match(/\/d\/(.+?)(\/|$)/);
+            if (match) {
+                const fileId = match[1];
+                return `https://drive.google.com/file/d/${fileId}/preview`;
+            }
+        }
+        
+        // Google Drive open?id= format
+        if (url.includes('drive.google.com/open')) {
+            const fileId = url.split('id=')[1].split('&')[0];
+            if (fileId) {
+                return `https://drive.google.com/file/d/${fileId}/preview`;
+            }
+        }
+        
+        // Google Docs
+        if (url.includes('docs.google.com/document')) {
+            const match = url.match(/\/d\/(.+?)(\/|$)/);
+            if (match) {
+                const docId = match[1];
+                return `https://docs.google.com/document/d/${docId}/preview`;
+            }
+        }
+        
+        // Google Sheets (spreadsheet)
+        if (url.includes('docs.google.com/spreadsheets')) {
+            const match = url.match(/\/d\/(.+?)(\/|$)/);
+            if (match) {
+                const sheetId = match[1];
+                return `https://docs.google.com/spreadsheets/d/${sheetId}/preview`;
+            }
+        }
+        
+        // Google Slides
+        if (url.includes('docs.google.com/presentation')) {
+            const match = url.match(/\/d\/(.+?)(\/|$)/);
+            if (match) {
+                const slideId = match[1];
+                return `https://docs.google.com/presentation/d/${slideId}/preview`;
+            }
+        }
+        
+        // PDF langsung
+        if (url.toLowerCase().endsWith('.pdf')) {
+            return url;
+        }
+        
+        // Gambar
+        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) {
+            return url;
+        }
+        
+        // Default: gunakan URL asli
+        return url;
+    }
+    
+    function getContentType(url) {
+        if (url.includes('youtube.com/embed') || url.includes('youtu.be')) return 'youtube';
+        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) return 'image';
+        if (url.toLowerCase().endsWith('.pdf')) return 'pdf';
+        return 'iframe';
+    }
+    
+    // ============================================================
     // FUNGSI POPUP
     // ============================================================
     
-    // Membuat popup baru
     function openPopup(url, title) {
         // Tutup popup yang sudah ada
         closePopup();
+        
+        // Konversi URL ke format embed
+        const embedUrl = getEmbedUrl(url);
+        console.log(`🔗 Original URL: ${url}`);
+        console.log(`🔗 Embed URL: ${embedUrl}`);
         
         // Buat elemen popup
         const overlay = document.createElement('div');
@@ -362,7 +485,7 @@
         const container = document.createElement('div');
         container.className = 'popup-container';
         
-        // Header dengan judul dan toolbar
+        // Header
         const header = document.createElement('div');
         header.className = 'popup-header';
         
@@ -432,19 +555,28 @@
         const contentDiv = document.createElement('div');
         contentDiv.className = 'popup-content';
         
-        // Tentukan jenis konten berdasarkan URL
+        // Tentukan jenis konten
+        const contentType = getContentType(embedUrl);
         let contentElement;
-        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
-            // Gambar
+        
+        if (contentType === 'image') {
             contentElement = document.createElement('img');
-            contentElement.src = url;
+            contentElement.src = embedUrl;
             contentElement.alt = title || 'Gambar';
+            contentElement.style.maxWidth = '100%';
+            contentElement.style.height = 'auto';
         } else {
-            // Default: iframe untuk sheet, website, dll
+            // Default: iframe
             contentElement = document.createElement('iframe');
-            contentElement.src = url;
+            contentElement.src = embedUrl;
             contentElement.title = title || 'Konten';
             contentElement.allow = "fullscreen";
+            contentElement.style.width = '100%';
+            contentElement.style.height = '100%';
+            contentElement.style.border = 'none';
+            contentElement.setAttribute('frameborder', '0');
+            contentElement.setAttribute('allowfullscreen', 'true');
+            contentElement.setAttribute('allow', 'autoplay; fullscreen');
         }
         
         contentDiv.appendChild(contentElement);
@@ -463,7 +595,9 @@
             contentDiv,
             contentElement,
             zoomValue,
-            currentZoom: 100
+            currentZoom: 100,
+            originalUrl: url,
+            embedUrl: embedUrl
         };
         
         // Zoom logic
@@ -471,10 +605,10 @@
             const zoom = currentPopup.currentZoom / 100;
             currentPopup.contentDiv.style.transform = `scale(${zoom})`;
             
-            // Update lebar wrapper agar scroll horizontal berfungsi
-            const originalWidth = currentPopup.contentElement.scrollWidth || currentPopup.contentElement.clientWidth;
-            currentPopup.contentDiv.style.width = `${100 / zoom}%`;
-            currentPopup.contentDiv.style.height = `${100 / zoom}%`;
+            if (currentPopup.contentElement.tagName === 'IFRAME') {
+                currentPopup.contentDiv.style.width = `${100 / zoom}%`;
+                currentPopup.contentDiv.style.height = `${100 / zoom}%`;
+            }
             
             currentPopup.zoomValue.textContent = `${currentPopup.currentZoom}%`;
         }
@@ -498,17 +632,15 @@
             updateZoom();
         }
         
-        // Event listeners untuk zoom
+        // Event listeners
         zoomInBtn.onclick = zoomIn;
         zoomOutBtn.onclick = zoomOut;
         resetBtn.onclick = resetZoom;
         
-        // Buka di tab baru
         newTabBtn.onclick = () => {
-            window.open(url, '_blank');
+            window.open(currentPopup.originalUrl, '_blank');
         };
         
-        // Fullscreen
         fullscreenBtn.onclick = () => {
             if (container.requestFullscreen) {
                 container.requestFullscreen();
@@ -519,7 +651,6 @@
             }
         };
         
-        // Close popup
         const closePopupHandler = () => closePopup();
         closeBtn.onclick = closePopupHandler;
         overlay.onclick = (e) => {
@@ -557,11 +688,22 @@
         };
         
         document.addEventListener('keydown', keyboardHandler);
-        
-        // Simpan handler untuk cleanup
         currentPopup.keyboardHandler = keyboardHandler;
         
-        // Inisialisasi zoom
+        // Handle iframe load error
+        if (contentElement.tagName === 'IFRAME') {
+            setTimeout(() => {
+                try {
+                    const iframeDoc = contentElement.contentDocument || contentElement.contentWindow?.document;
+                    if (!iframeDoc || !iframeDoc.body || iframeDoc.body.innerHTML === '') {
+                        // Mungkin error, tapi biarkan jika konten tetap loading
+                    }
+                } catch (e) {
+                    console.warn('Cannot access iframe content (cross-origin)');
+                }
+            }, 3000);
+        }
+        
         updateZoom();
     }
     
@@ -810,7 +952,7 @@
             return;
         }
         
-        // Filter area untuk page ini DAN area ALL (universal)
+        // Filter area untuk page ini DAN area ALL
         const areasForPage = klikData.filter(area => {
             const isActive = String(area.is_active || '').toUpperCase();
             const isValidActive = isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
@@ -830,7 +972,6 @@
             return;
         }
         
-        // Gunakan ukuran referensi dari sheet (1512x1023)
         const pageInfo = pagesData.find(p => p.page_id === pageId);
         const referenceWidth = parseInt(pageInfo?.original_width) || 1512;
         const referenceHeight = parseInt(pageInfo?.original_height) || 1023;
@@ -841,13 +982,10 @@
         console.log(`📏 Referensi dari sheet: ${referenceWidth}x${referenceHeight}`);
         console.log(`📏 Scale: ${scaleX.toFixed(4)} x ${scaleY.toFixed(4)}`);
         
-        // Kosongkan map
         mapElement.innerHTML = '';
         
-        // Simpan area untuk highlight
         const highlightAreas = [];
         
-        // Area dari Google Sheet
         areasForPage.forEach((area, idx) => {
             console.log(`📌 Area ${idx+1}: ${area.title} | coords: ${area.coords} | page_id: ${area.page_id}`);
             
@@ -863,7 +1001,6 @@
                 case 'rect':
                     if (coordsParts.length === 4) {
                         scaledCoords = `${Math.round(coordsParts[0] * scaleX)},${Math.round(coordsParts[1] * scaleY)},${Math.round(coordsParts[2] * scaleX)},${Math.round(coordsParts[3] * scaleY)}`;
-                        console.log(`  → Rect: ${area.coords} → ${scaledCoords}`);
                     }
                     break;
                 case 'circle':
@@ -898,7 +1035,6 @@
             areaElement.setAttribute('alt', area.title);
             areaElement.style.cursor = 'pointer';
             
-            // Action type logic
             const actionType = String(area.action_type || '').toUpperCase();
             const target = area.target_page || '';
             
@@ -908,20 +1044,14 @@
                     e.stopPropagation();
                     console.log(`🔘 Diklik: ${area.title} | action: ${actionType || 'internal'} | target: ${target}`);
                     
-                    // POPUP action
                     if (actionType === 'POPUP') {
                         openPopup(target, area.title);
-                    }
-                    // URL action (buka di tab baru)
-                    else if (actionType === 'URL' || target.startsWith('http://') || target.startsWith('https://')) {
+                    } else if (actionType === 'URL' || target.startsWith('http://') || target.startsWith('https://')) {
                         window.open(target, '_blank');
-                    }
-                    // Internal navigation (default)
-                    else if (pagesData.find(p => p.page_id === target)) {
+                    } else if (pagesData.find(p => p.page_id === target)) {
                         currentPageId = target;
                         renderPage();
-                    }
-                    else {
+                    } else {
                         console.warn(`⚠️ Target "${target}" tidak dikenali`);
                         alert(`Target "${target}" tidak valid`);
                     }
@@ -930,7 +1060,6 @@
             
             mapElement.appendChild(areaElement);
             
-            // Cek apakah perlu highlight
             const showHighlight = String(area.show_highlight || '').toUpperCase();
             if (showHighlight === 'ON' || showHighlight === 'TRUE' || showHighlight === 'YES') {
                 highlightAreas.push(area);
@@ -940,7 +1069,6 @@
         console.log(`✅ Total area dibuat: ${mapElement.children.length}`);
         imgElement.setAttribute('usemap', '#dynamicMap');
         
-        // Tampilkan highlight
         if (highlightAreas.length > 0) {
             showHighlightOverlay(highlightAreas, imgElement, referenceWidth, referenceHeight, currentWidth, currentHeight);
         }
