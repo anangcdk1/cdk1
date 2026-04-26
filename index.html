@@ -34,10 +34,9 @@
             background: transparent;
             margin-bottom: 12px;
             display: flex;
-            justify-content: flex-start;
+            flex-direction: column;
             padding: 0 4px;
             overflow-x: auto;
-            position: relative;
         }
 
         .page-nav {
@@ -51,10 +50,6 @@
             flex-wrap: wrap;
         }
 
-        .nav-item {
-            position: relative;
-        }
-
         .page-nav a {
             background: transparent;
             color: #e0e0e0;
@@ -66,7 +61,6 @@
             transition: all 0.25s ease;
             cursor: pointer;
             white-space: nowrap;
-            display: inline-block;
         }
 
         .page-nav a:hover, .page-nav a.active {
@@ -74,64 +68,20 @@
             color: #1a3a1a;
         }
 
-        /* Dropdown submenu styles */
-        .nav-item {
-            position: relative;
+        /* Sub menu style */
+        .page-nav.sub-nav {
+            margin-top: 4px;
+            padding-left: 20px;
+            background: rgba(0, 0, 0, 0.35);
         }
 
-        .nav-item.has-children > a {
-            position: relative;
-            padding-right: 28px;
-        }
-
-        .nav-item.has-children > a::after {
-            content: '▼';
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 12px;
-            transition: transform 0.3s ease;
-        }
-
-        .nav-item.has-children:hover > a::after {
-            transform: translateY(-50%) rotate(180deg);
-        }
-
-        .dropdown-menu {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 8px 0;
-            min-width: 180px;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px);
-            transition: all 0.3s ease;
-            z-index: 100;
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-
-        .nav-item:hover .dropdown-menu {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-
-        .dropdown-menu a {
-            display: block;
-            padding: 10px 20px;
-            color: #e0e0e0;
-            white-space: nowrap;
-            border-radius: 0;
+        .page-nav.sub-nav a {
             font-size: 14px;
+            padding: 4px 12px;
+            background: rgba(255, 255, 255, 0.1);
         }
 
-        .dropdown-menu a:hover {
+        .page-nav.sub-nav a:hover, .page-nav.sub-nav a.active {
             background: #ffd700;
             color: #1a3a1a;
         }
@@ -365,6 +315,35 @@
             margin: 0 auto;
         }
 
+        .popup-error {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .popup-error h3 {
+            margin: 20px 0 10px;
+            color: #333;
+        }
+
+        .popup-error p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .popup-error button {
+            padding: 10px 20px;
+            background: #1a3a1a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
         /* Responsive untuk mobile */
         @media (max-width: 768px) {
             .popup-container {
@@ -383,45 +362,6 @@
             .zoom-value {
                 min-width: 45px;
                 font-size: 12px;
-            }
-            
-            .page-nav {
-                flex-direction: column;
-                border-radius: 20px;
-                padding: 10px;
-            }
-            
-            .dropdown-menu {
-                position: static;
-                opacity: 1;
-                visibility: visible;
-                transform: none;
-                background: rgba(0,0,0,0.5);
-                margin-top: 5px;
-                margin-bottom: 5px;
-                display: none;
-            }
-            
-            .nav-item.has-children > a::after {
-                right: 15px;
-            }
-            
-            .nav-item.active .dropdown-menu {
-                display: block;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .pokja-sidebar {
-                width: 40px;
-            }
-            
-            .pokja-btn {
-                min-height: 55px;
-            }
-            
-            .horizontal-text {
-                font-size: 11px;
             }
         }
     </style>
@@ -459,11 +399,13 @@
     // ============================================================
     
     function getEmbedUrl(url) {
+        // YouTube - format youtu.be
         if (url.includes('youtu.be')) {
             const videoId = url.split('youtu.be/')[1].split('?')[0];
             return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
         }
         
+        // YouTube - format youtube.com/watch
         if (url.includes('youtube.com/watch')) {
             const urlParams = new URLSearchParams(url.split('?')[1]);
             const videoId = urlParams.get('v');
@@ -472,10 +414,12 @@
             }
         }
         
+        // YouTube - format youtube.com/embed (sudah embed)
         if (url.includes('youtube.com/embed')) {
             return url;
         }
         
+        // Google Drive File (PDF, gambar, video)
         if (url.includes('drive.google.com/file')) {
             const match = url.match(/\/d\/(.+?)(\/|$)/);
             if (match) {
@@ -484,6 +428,7 @@
             }
         }
         
+        // Google Drive open?id= format
         if (url.includes('drive.google.com/open')) {
             const fileId = url.split('id=')[1].split('&')[0];
             if (fileId) {
@@ -491,6 +436,7 @@
             }
         }
         
+        // Google Docs
         if (url.includes('docs.google.com/document')) {
             const match = url.match(/\/d\/(.+?)(\/|$)/);
             if (match) {
@@ -499,6 +445,7 @@
             }
         }
         
+        // Google Sheets (spreadsheet)
         if (url.includes('docs.google.com/spreadsheets')) {
             const match = url.match(/\/d\/(.+?)(\/|$)/);
             if (match) {
@@ -507,6 +454,7 @@
             }
         }
         
+        // Google Slides
         if (url.includes('docs.google.com/presentation')) {
             const match = url.match(/\/d\/(.+?)(\/|$)/);
             if (match) {
@@ -515,14 +463,17 @@
             }
         }
         
+        // PDF langsung
         if (url.toLowerCase().endsWith('.pdf')) {
             return url;
         }
         
+        // Gambar
         if (url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) {
             return url;
         }
         
+        // Default: gunakan URL asli
         return url;
     }
     
@@ -538,18 +489,22 @@
     // ============================================================
     
     function openPopup(url, title) {
+        // Tutup popup yang sudah ada
         closePopup();
         
+        // Konversi URL ke format embed
         const embedUrl = getEmbedUrl(url);
         console.log(`🔗 Original URL: ${url}`);
         console.log(`🔗 Embed URL: ${embedUrl}`);
         
+        // Buat elemen popup
         const overlay = document.createElement('div');
         overlay.className = 'popup-overlay';
         
         const container = document.createElement('div');
         container.className = 'popup-container';
         
+        // Header
         const header = document.createElement('div');
         header.className = 'popup-header';
         
@@ -560,35 +515,42 @@
         const toolbar = document.createElement('div');
         toolbar.className = 'popup-toolbar';
         
+        // Zoom out button
         const zoomOutBtn = document.createElement('button');
         zoomOutBtn.className = 'popup-btn';
         zoomOutBtn.innerHTML = '<span class="emoji">🔍</span><span>−</span>';
         zoomOutBtn.title = 'Zoom Out (Ctrl + -)';
         
+        // Zoom value display
         const zoomValue = document.createElement('span');
         zoomValue.className = 'zoom-value';
         zoomValue.textContent = '100%';
         
+        // Zoom in button
         const zoomInBtn = document.createElement('button');
         zoomInBtn.className = 'popup-btn';
         zoomInBtn.innerHTML = '<span class="emoji">🔍</span><span>+</span>';
         zoomInBtn.title = 'Zoom In (Ctrl + +)';
         
+        // Reset zoom button
         const resetBtn = document.createElement('button');
         resetBtn.className = 'popup-btn';
         resetBtn.innerHTML = '<span>⟳</span><span>100%</span>';
         resetBtn.title = 'Reset Zoom (Ctrl + 0)';
         
+        // Buka di tab baru button
         const newTabBtn = document.createElement('button');
         newTabBtn.className = 'popup-btn';
         newTabBtn.innerHTML = '<span>🔗</span><span>Tab Baru</span>';
         newTabBtn.title = 'Buka di Tab Baru';
         
+        // Fullscreen button
         const fullscreenBtn = document.createElement('button');
         fullscreenBtn.className = 'popup-btn';
         fullscreenBtn.innerHTML = '<span>⤢</span><span>Fullscreen</span>';
         fullscreenBtn.title = 'Fullscreen';
         
+        // Close button
         const closeBtn = document.createElement('button');
         closeBtn.className = 'popup-btn popup-btn-close';
         closeBtn.innerHTML = '<span>✕</span><span>Tutup</span>';
@@ -605,12 +567,14 @@
         header.appendChild(titleSpan);
         header.appendChild(toolbar);
         
+        // Content wrapper
         const contentWrapper = document.createElement('div');
         contentWrapper.className = 'popup-content-wrapper';
         
         const contentDiv = document.createElement('div');
         contentDiv.className = 'popup-content';
         
+        // Tentukan jenis konten
         const contentType = getContentType(embedUrl);
         let contentElement;
         
@@ -621,6 +585,7 @@
             contentElement.style.maxWidth = '100%';
             contentElement.style.height = 'auto';
         } else {
+            // Default: iframe
             contentElement = document.createElement('iframe');
             contentElement.src = embedUrl;
             contentElement.title = title || 'Konten';
@@ -642,6 +607,7 @@
         
         document.body.appendChild(overlay);
         
+        // Simpan referensi
         currentPopup = {
             overlay,
             container,
@@ -653,6 +619,7 @@
             embedUrl: embedUrl
         };
         
+        // Zoom logic
         function updateZoom() {
             const zoom = currentPopup.currentZoom / 100;
             currentPopup.contentDiv.style.transform = `scale(${zoom})`;
@@ -684,6 +651,7 @@
             updateZoom();
         }
         
+        // Event listeners
         zoomInBtn.onclick = zoomIn;
         zoomOutBtn.onclick = zoomOut;
         resetBtn.onclick = resetZoom;
@@ -708,6 +676,7 @@
             if (e.target === overlay) closePopupHandler();
         };
         
+        // Keyboard shortcuts
         const keyboardHandler = (e) => {
             if (!currentPopup) return;
             
@@ -740,11 +709,13 @@
         document.addEventListener('keydown', keyboardHandler);
         currentPopup.keyboardHandler = keyboardHandler;
         
+        // Handle iframe load error
         if (contentElement.tagName === 'IFRAME') {
             setTimeout(() => {
                 try {
                     const iframeDoc = contentElement.contentDocument || contentElement.contentWindow?.document;
                     if (!iframeDoc || !iframeDoc.body || iframeDoc.body.innerHTML === '') {
+                        // Mungkin error, tapi biarkan jika konten tetap loading
                     }
                 } catch (e) {
                     console.warn('Cannot access iframe content (cross-origin)');
@@ -872,8 +843,10 @@
             console.log(`✅ Pages loaded: ${pagesData.length} rows`);
             console.log(`✅ Klik areas loaded: ${klikData.length} rows`);
             
-            if (pagesData.length > 0) {
-                console.log('📊 Kolom yang tersedia di sheet page:', Object.keys(pagesData[0]));
+            if (klikData.length > 0) {
+                console.log('📊 Sample klik data:', klikData[0]);
+            } else {
+                console.warn('⚠️ Tidak ada data di sheet klik!');
             }
             
             if (pagesData.length === 0) {
@@ -998,6 +971,7 @@
             return;
         }
         
+        // Filter area untuk page ini DAN area ALL
         const areasForPage = klikData.filter(area => {
             const isActive = String(area.is_active || '').toUpperCase();
             const isValidActive = isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
@@ -1121,46 +1095,7 @@
     
     // ============================================================
     // FUNGSI RENDER HALAMAN
-    // Sub menu hanya untuk top navigation (menu atas)
-    // Sidebar tetap sederhana tanpa sub menu
     // ============================================================
-    
-    function buildTopMenuHierarchy() {
-        // Ambil semua menu top yang aktif
-        const topMenus = pagesData.filter(p => {
-            const isActive = String(p.is_active_top || '').toUpperCase();
-            return isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
-        }).sort((a,b) => {
-            const orderA = parseInt(a.order) || 0;
-            const orderB = parseInt(b.order) || 0;
-            return orderA - orderB;
-        });
-        
-        // Pisahkan parent dan child berdasarkan kolom menu_type dan parent_id
-        const parents = [];
-        const children = {};
-        
-        topMenus.forEach(menu => {
-            const menuType = String(menu.menu_type || '').toUpperCase();
-            const parentId = menu.parent_id || '';
-            
-            if (menuType === 'SUB' && parentId !== '') {
-                // Ini adalah child menu (sub menu)
-                if (!children[parentId]) {
-                    children[parentId] = [];
-                }
-                children[parentId].push(menu);
-                console.log(`📌 Sub menu: ${menu.label_menu} -> parent: ${parentId}`);
-            } else {
-                // Ini adalah parent menu
-                parents.push(menu);
-                console.log(`📌 Parent menu: ${menu.label_menu} (${menu.page_id})`);
-            }
-        });
-        
-        return { parents, children };
-    }
-    
     function setSidebarHeight(imgElement) {
         const sidebar = document.getElementById('pokjaSidebar');
         if (sidebar && imgElement && imgElement.clientHeight > 0) {
@@ -1176,24 +1111,50 @@
         return `https://lh3.googleusercontent.com/d/${imageId}`;
     }
     
+    // Fungsi untuk memisahkan parent dan sub menu berdasarkan order
+    function getParentAndSubMenus(menus) {
+        const parents = [];
+        const subMenus = [];
+        
+        menus.forEach(menu => {
+            const orderStr = String(menu.order || '');
+            if (orderStr.includes('.')) {
+                // Ini adalah sub menu
+                subMenus.push(menu);
+            } else {
+                // Ini adalah parent menu
+                parents.push(menu);
+            }
+        });
+        
+        return { parents, subMenus };
+    }
+    
+    // Fungsi untuk mendapatkan sub menu dari parent tertentu
+    function getSubMenusForParent(parentOrder, allSubMenus) {
+        return allSubMenus.filter(sub => {
+            const orderStr = String(sub.order || '');
+            const parentNum = parseInt(orderStr.split('.')[0]);
+            return parentNum === parentOrder;
+        }).sort((a, b) => {
+            const aNum = parseFloat(a.order);
+            const bNum = parseFloat(b.order);
+            return aNum - bNum;
+        });
+    }
+    
     function renderPage() {
-        // Ambil sidebar menus (tanpa sub menu)
-        const sideMenus = pagesData.filter(p => {
-            const isActive = String(p.is_active_sidebar || '').toUpperCase();
-            return isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
-        }).sort((a,b) => {
-            const orderA = parseInt(a.order) || 0;
-            const orderB = parseInt(b.order) || 0;
-            return orderA - orderB;
+        // Filter dan sortir semua top menu
+        const allTopMenus = pagesData.filter(p => p.is_active_top === 'TRUE').sort((a, b) => {
+            const aOrder = parseFloat(a.order || 0);
+            const bOrder = parseFloat(b.order || 0);
+            return aOrder - bOrder;
         });
         
-        // Filter hanya parent menu untuk sidebar (menu_type bukan SUB)
-        const sidebarParentMenus = sideMenus.filter(menu => {
-            const menuType = String(menu.menu_type || '').toUpperCase();
-            return menuType !== 'SUB';
-        });
+        // Pisahkan parent dan sub menu
+        const { parents: parentMenus, subMenus: allSubMenus } = getParentAndSubMenus(allTopMenus);
         
-        const { parents: topParents, children: topChildren } = buildTopMenuHierarchy();
+        const sideMenus = pagesData.filter(p => p.is_active_sidebar === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
         
         const currentPage = pagesData.find(p => p.page_id === currentPageId);
         if (!currentPage) {
@@ -1203,83 +1164,108 @@
         
         const imageUrl = getImageUrl(currentPage.image_id || currentPage.image_url);
         
-        // Tentukan active top menu
+        // ============================================================
+        // MENENTUKAN ACTIVE TOP ID (menghapus hardcode 'realisasi')
+        // ============================================================
         let activeTopId = null;
-        const currentMenuType = String(currentPage.menu_type || '').toUpperCase();
         
-        if (currentMenuType === 'SUB') {
-            // Jika current page adalah sub menu, cari parent-nya
-            const parentId = currentPage.parent_id;
-            if (parentId) {
-                activeTopId = parentId;
-            } else {
-                activeTopId = currentPage.page_id;
-            }
+        if (currentPage.menu_type === 'sidebar') {
+            // Untuk sidebar: gunakan kolom active_top_id dari sheet
+            activeTopId = currentPage.active_top_id || null;
         } else {
+            // Untuk top menu: aktifkan dirinya sendiri
             activeTopId = currentPage.page_id;
         }
         
-        // Bangun HTML top navigation dengan dropdown
-        let topNavHtml = '<div class="page-nav">';
+        // Cari parent menu yang aktif (untuk sub menu)
+        let activeParentOrder = null;
+        let activeParentId = null;
         
-        topParents.forEach(parent => {
-            const hasChildren = topChildren[parent.page_id] && topChildren[parent.page_id].length > 0;
-            const isActive = activeTopId === parent.page_id;
-            
-            if (hasChildren) {
-                // Menu dengan dropdown
-                topNavHtml += `<div class="nav-item has-children">
-                    <a class="${isActive ? 'active' : ''}" data-page="${parent.page_id}">${parent.label_menu}</a>
-                    <div class="dropdown-menu">`;
-                
-                topChildren[parent.page_id].forEach(child => {
-                    topNavHtml += `<a data-page="${child.page_id}">${child.label_menu}</a>`;
-                });
-                
-                topNavHtml += `</div></div>`;
-            } else {
-                // Menu biasa tanpa dropdown
-                topNavHtml += `<div class="nav-item">
-                    <a class="${isActive ? 'active' : ''}" data-page="${parent.page_id}">${parent.label_menu}</a>
-                </div>`;
+        // Cek apakah currentPage adalah parent
+        const isCurrentPageParent = parentMenus.some(p => p.page_id === currentPageId);
+        
+        // Cek apakah currentPage adalah sub menu
+        const currentPageOrder = parseFloat(currentPage.order || 0);
+        if (!isCurrentPageParent && !isNaN(currentPageOrder) && String(currentPage.order || '').includes('.')) {
+            activeParentOrder = parseInt(String(currentPage.order).split('.')[0]);
+            const parentMenu = parentMenus.find(p => parseInt(p.order) === activeParentOrder);
+            if (parentMenu) {
+                activeParentId = parentMenu.page_id;
             }
-        });
+        } else if (isCurrentPageParent) {
+            activeParentOrder = parseInt(currentPage.order);
+            activeParentId = currentPage.page_id;
+        }
         
-        topNavHtml += '</div>';
+        // Dapatkan sub menu untuk parent yang aktif
+        let activeSubMenus = [];
+        if (activeParentOrder !== null) {
+            activeSubMenus = getSubMenusForParent(activeParentOrder, allSubMenus);
+        }
         
-        // Bangun HTML sidebar (sederhana, tanpa sub menu)
-        let sidebarHtml = '<div class="pokja-list">';
+        // Tentukan active sub menu
+        let activeSubId = null;
+        if (currentPage.menu_type === 'top' && String(currentPage.order || '').includes('.')) {
+            activeSubId = currentPage.page_id;
+        }
         
-        sidebarParentMenus.forEach(menu => {
-            const isActive = currentPageId === menu.page_id;
-            sidebarHtml += `
-                <div class="pokja-btn ${isActive ? 'active' : ''}" data-page="${menu.page_id}">
-                    <div class="horizontal-text">${menu.label_menu}</div>
+        let activeSideId = null;
+        if (currentPage.menu_type === 'sidebar') {
+            activeSideId = currentPage.page_id;
+        } else {
+            activeSideId = null;
+        }
+        
+        // Build HTML untuk top navigation (parent + sub)
+        let topNavHtml = `
+            <div class="nav-section">
+                <div class="page-nav">
+                    ${parentMenus.map(menu => `
+                        <a data-page="${menu.page_id}" class="${activeTopId === menu.page_id ? 'active' : ''}" data-order="${menu.order}">
+                            ${menu.label_menu}
+                        </a>
+                    `).join('')}
+                </div>
+        `;
+        
+        // Tambahkan sub menu jika ada
+        if (activeSubMenus.length > 0) {
+            topNavHtml += `
+                <div class="page-nav sub-nav">
+                    ${activeSubMenus.map(sub => `
+                        <a data-page="${sub.page_id}" class="${activeSubId === sub.page_id ? 'active' : ''}" data-order="${sub.order}">
+                            ${sub.label_menu}
+                        </a>
+                    `).join('')}
                 </div>
             `;
-        });
+        }
         
-        sidebarHtml += '</div>';
+        topNavHtml += `</div>`;
         
         const html = `
-            <div class="nav-section">
-                ${topNavHtml}
-            </div>
+            ${topNavHtml}
             <div class="content-row">
                 <div class="image-wrapper">
                     <img src="${imageUrl}" alt="${currentPage.title}" id="mainImage">
                     <map name="dynamicMap" id="dynamicMap"></map>
                 </div>
                 <div class="pokja-sidebar" id="pokjaSidebar">
-                    ${sidebarHtml}
+                    <div class="pokja-list">
+                        ${sideMenus.map(menu => `
+                            <div class="pokja-btn ${activeSideId === menu.page_id ? 'active' : ''}" data-page="${menu.page_id}">
+                                <div class="horizontal-text">${menu.label_menu}</div>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             </div>
         `;
         
         document.getElementById('app').innerHTML = html;
         
-        // Event handler untuk top menu (termasuk dropdown items)
-        document.querySelectorAll('.page-nav a').forEach(link => {
+        // Event listener untuk top menu (parent)
+        document.querySelectorAll('.page-nav:not(.sub-nav) a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const pageId = link.getAttribute('data-page');
@@ -1291,7 +1277,20 @@
             });
         });
         
-        // Event handler untuk sidebar
+        // Event listener untuk sub menu
+        document.querySelectorAll('.page-nav.sub-nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = link.getAttribute('data-page');
+                if (pageId) {
+                    console.log(`🔄 Pindah ke sub menu: ${pageId}`);
+                    currentPageId = pageId;
+                    renderPage();
+                }
+            });
+        });
+        
+        // Event listener untuk sidebar menu
         document.querySelectorAll('.pokja-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1327,21 +1326,16 @@
         }
         
         let resizeTimeout;
-        window.removeEventListener('resize', handleResize);
-        window.addEventListener('resize', handleResize);
-        
-        function handleResize() {
+        window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
-                const imgElement = document.getElementById('mainImage');
-                const mapElement = document.getElementById('dynamicMap');
-                if (imgElement && imgElement.clientHeight > 0 && mapElement) {
+                if (img && img.clientHeight > 0) {
                     console.log('📱 Resize detected');
-                    createClickableAreas(currentPageId, imgElement, mapElement);
-                    setSidebarHeight(imgElement);
+                    createClickableAreas(currentPageId, img, mapEl);
+                    setSidebarHeight(img);
                 }
             }, 100);
-        }
+        });
     }
     
     // ============================================================
