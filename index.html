@@ -37,6 +37,7 @@
             justify-content: flex-start;
             padding: 0 4px;
             overflow-x: auto;
+            position: relative;
         }
 
         .page-nav {
@@ -47,6 +48,11 @@
             padding: 6px 20px;
             border-radius: 50px;
             border: 1px solid rgba(255, 215, 0, 0.3);
+            flex-wrap: wrap;
+        }
+
+        .nav-item {
+            position: relative;
         }
 
         .page-nav a {
@@ -60,9 +66,72 @@
             transition: all 0.25s ease;
             cursor: pointer;
             white-space: nowrap;
+            display: inline-block;
         }
 
         .page-nav a:hover, .page-nav a.active {
+            background: #ffd700;
+            color: #1a3a1a;
+        }
+
+        /* Dropdown submenu styles */
+        .nav-item {
+            position: relative;
+        }
+
+        .nav-item.has-children > a {
+            position: relative;
+            padding-right: 28px;
+        }
+
+        .nav-item.has-children > a::after {
+            content: '▼';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-item.has-children:hover > a::after {
+            transform: translateY(-50%) rotate(180deg);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 8px 0;
+            min-width: 180px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 100;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .nav-item:hover .dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-menu a {
+            display: block;
+            padding: 10px 20px;
+            color: #e0e0e0;
+            white-space: nowrap;
+            border-radius: 0;
+            font-size: 14px;
+        }
+
+        .dropdown-menu a:hover {
             background: #ffd700;
             color: #1a3a1a;
         }
@@ -110,7 +179,7 @@
         }
 
         .pokja-sidebar {
-            width: 70px;
+            width: 45px;
             background: linear-gradient(135deg, #0d3b4f 0%, #0a2e3f 100%);
             border-radius: 0 16px 16px 0;
             border-left: 2px solid #00bcd4;
@@ -122,11 +191,7 @@
             display: flex;
             flex-direction: column;
             flex: 1;
-        }
-
-        .sidebar-item {
-            display: flex;
-            flex-direction: column;
+            justify-content: center;
         }
 
         .pokja-btn {
@@ -138,27 +203,8 @@
             text-decoration: none;
             transition: all 0.25s ease;
             cursor: pointer;
-            min-height: 65px;
-            position: relative;
-        }
-
-        .pokja-btn.has-children {
-            cursor: pointer;
-            position: relative;
-        }
-
-        .pokja-btn.has-children::after {
-            content: '▼';
-            position: absolute;
-            bottom: 5px;
-            right: 8px;
-            font-size: 10px;
-            transform: rotate(0deg);
-            transition: transform 0.3s ease;
-        }
-
-        .pokja-btn.has-children.expanded::after {
-            transform: rotate(180deg);
+            flex: 1;
+            min-height: 70px;
         }
 
         .pokja-btn:not(:last-child) {
@@ -172,53 +218,12 @@
 
         .horizontal-text {
             display: inline-block;
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 600;
             letter-spacing: 1px;
             text-transform: uppercase;
             white-space: nowrap;
             transform: rotate(90deg);
-        }
-
-        /* Submenu Styles */
-        .submenu-container {
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-            max-height: 0;
-            background: rgba(0, 0, 0, 0.3);
-        }
-
-        .submenu-container.show {
-            max-height: 500px;
-        }
-
-        .submenu-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 188, 212, 0.08);
-            color: #b2ebf2;
-            text-decoration: none;
-            transition: all 0.25s ease;
-            cursor: pointer;
-            min-height: 50px;
-            border-left: 3px solid rgba(0, 188, 212, 0.5);
-        }
-
-        .submenu-btn:not(:last-child) {
-            border-bottom: 1px solid rgba(0, 188, 212, 0.2);
-        }
-
-        .submenu-btn:hover, .submenu-btn.active {
-            background: #ffd700;
-            color: #1a3a1a;
-        }
-
-        .submenu-btn .horizontal-text {
-            font-size: 11px;
-            letter-spacing: 0.5px;
         }
 
         .loading {
@@ -360,16 +365,6 @@
             margin: 0 auto;
         }
 
-        .popup-error {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            padding: 40px;
-            text-align: center;
-        }
-
         /* Responsive untuk mobile */
         @media (max-width: 768px) {
             .popup-container {
@@ -390,20 +385,43 @@
                 font-size: 12px;
             }
             
+            .page-nav {
+                flex-direction: column;
+                border-radius: 20px;
+                padding: 10px;
+            }
+            
+            .dropdown-menu {
+                position: static;
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+                background: rgba(0,0,0,0.5);
+                margin-top: 5px;
+                margin-bottom: 5px;
+                display: none;
+            }
+            
+            .nav-item.has-children > a::after {
+                right: 15px;
+            }
+            
+            .nav-item.active .dropdown-menu {
+                display: block;
+            }
+        }
+
+        @media (max-width: 768px) {
             .pokja-sidebar {
-                width: 55px;
+                width: 40px;
             }
             
             .pokja-btn {
                 min-height: 55px;
             }
             
-            .submenu-btn {
-                min-height: 45px;
-            }
-            
-            .submenu-btn .horizontal-text {
-                font-size: 9px;
+            .horizontal-text {
+                font-size: 11px;
             }
         }
     </style>
@@ -441,13 +459,11 @@
     // ============================================================
     
     function getEmbedUrl(url) {
-        // YouTube - format youtu.be
         if (url.includes('youtu.be')) {
             const videoId = url.split('youtu.be/')[1].split('?')[0];
             return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
         }
         
-        // YouTube - format youtube.com/watch
         if (url.includes('youtube.com/watch')) {
             const urlParams = new URLSearchParams(url.split('?')[1]);
             const videoId = urlParams.get('v');
@@ -456,12 +472,10 @@
             }
         }
         
-        // YouTube - format youtube.com/embed (sudah embed)
         if (url.includes('youtube.com/embed')) {
             return url;
         }
         
-        // Google Drive File (PDF, gambar, video)
         if (url.includes('drive.google.com/file')) {
             const match = url.match(/\/d\/(.+?)(\/|$)/);
             if (match) {
@@ -470,7 +484,6 @@
             }
         }
         
-        // Google Drive open?id= format
         if (url.includes('drive.google.com/open')) {
             const fileId = url.split('id=')[1].split('&')[0];
             if (fileId) {
@@ -478,7 +491,6 @@
             }
         }
         
-        // Google Docs
         if (url.includes('docs.google.com/document')) {
             const match = url.match(/\/d\/(.+?)(\/|$)/);
             if (match) {
@@ -487,7 +499,6 @@
             }
         }
         
-        // Google Sheets (spreadsheet)
         if (url.includes('docs.google.com/spreadsheets')) {
             const match = url.match(/\/d\/(.+?)(\/|$)/);
             if (match) {
@@ -496,7 +507,6 @@
             }
         }
         
-        // Google Slides
         if (url.includes('docs.google.com/presentation')) {
             const match = url.match(/\/d\/(.+?)(\/|$)/);
             if (match) {
@@ -505,17 +515,14 @@
             }
         }
         
-        // PDF langsung
         if (url.toLowerCase().endsWith('.pdf')) {
             return url;
         }
         
-        // Gambar
         if (url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) {
             return url;
         }
         
-        // Default: gunakan URL asli
         return url;
     }
     
@@ -531,22 +538,18 @@
     // ============================================================
     
     function openPopup(url, title) {
-        // Tutup popup yang sudah ada
         closePopup();
         
-        // Konversi URL ke format embed
         const embedUrl = getEmbedUrl(url);
         console.log(`🔗 Original URL: ${url}`);
         console.log(`🔗 Embed URL: ${embedUrl}`);
         
-        // Buat elemen popup
         const overlay = document.createElement('div');
         overlay.className = 'popup-overlay';
         
         const container = document.createElement('div');
         container.className = 'popup-container';
         
-        // Header
         const header = document.createElement('div');
         header.className = 'popup-header';
         
@@ -557,42 +560,35 @@
         const toolbar = document.createElement('div');
         toolbar.className = 'popup-toolbar';
         
-        // Zoom out button
         const zoomOutBtn = document.createElement('button');
         zoomOutBtn.className = 'popup-btn';
         zoomOutBtn.innerHTML = '<span class="emoji">🔍</span><span>−</span>';
         zoomOutBtn.title = 'Zoom Out (Ctrl + -)';
         
-        // Zoom value display
         const zoomValue = document.createElement('span');
         zoomValue.className = 'zoom-value';
         zoomValue.textContent = '100%';
         
-        // Zoom in button
         const zoomInBtn = document.createElement('button');
         zoomInBtn.className = 'popup-btn';
         zoomInBtn.innerHTML = '<span class="emoji">🔍</span><span>+</span>';
         zoomInBtn.title = 'Zoom In (Ctrl + +)';
         
-        // Reset zoom button
         const resetBtn = document.createElement('button');
         resetBtn.className = 'popup-btn';
         resetBtn.innerHTML = '<span>⟳</span><span>100%</span>';
         resetBtn.title = 'Reset Zoom (Ctrl + 0)';
         
-        // Buka di tab baru button
         const newTabBtn = document.createElement('button');
         newTabBtn.className = 'popup-btn';
         newTabBtn.innerHTML = '<span>🔗</span><span>Tab Baru</span>';
         newTabBtn.title = 'Buka di Tab Baru';
         
-        // Fullscreen button
         const fullscreenBtn = document.createElement('button');
         fullscreenBtn.className = 'popup-btn';
         fullscreenBtn.innerHTML = '<span>⤢</span><span>Fullscreen</span>';
         fullscreenBtn.title = 'Fullscreen';
         
-        // Close button
         const closeBtn = document.createElement('button');
         closeBtn.className = 'popup-btn popup-btn-close';
         closeBtn.innerHTML = '<span>✕</span><span>Tutup</span>';
@@ -609,14 +605,12 @@
         header.appendChild(titleSpan);
         header.appendChild(toolbar);
         
-        // Content wrapper
         const contentWrapper = document.createElement('div');
         contentWrapper.className = 'popup-content-wrapper';
         
         const contentDiv = document.createElement('div');
         contentDiv.className = 'popup-content';
         
-        // Tentukan jenis konten
         const contentType = getContentType(embedUrl);
         let contentElement;
         
@@ -627,7 +621,6 @@
             contentElement.style.maxWidth = '100%';
             contentElement.style.height = 'auto';
         } else {
-            // Default: iframe
             contentElement = document.createElement('iframe');
             contentElement.src = embedUrl;
             contentElement.title = title || 'Konten';
@@ -649,7 +642,6 @@
         
         document.body.appendChild(overlay);
         
-        // Simpan referensi
         currentPopup = {
             overlay,
             container,
@@ -661,7 +653,6 @@
             embedUrl: embedUrl
         };
         
-        // Zoom logic
         function updateZoom() {
             const zoom = currentPopup.currentZoom / 100;
             currentPopup.contentDiv.style.transform = `scale(${zoom})`;
@@ -693,7 +684,6 @@
             updateZoom();
         }
         
-        // Event listeners
         zoomInBtn.onclick = zoomIn;
         zoomOutBtn.onclick = zoomOut;
         resetBtn.onclick = resetZoom;
@@ -718,7 +708,6 @@
             if (e.target === overlay) closePopupHandler();
         };
         
-        // Keyboard shortcuts
         const keyboardHandler = (e) => {
             if (!currentPopup) return;
             
@@ -751,13 +740,11 @@
         document.addEventListener('keydown', keyboardHandler);
         currentPopup.keyboardHandler = keyboardHandler;
         
-        // Handle iframe load error
         if (contentElement.tagName === 'IFRAME') {
             setTimeout(() => {
                 try {
                     const iframeDoc = contentElement.contentDocument || contentElement.contentWindow?.document;
                     if (!iframeDoc || !iframeDoc.body || iframeDoc.body.innerHTML === '') {
-                        // Mungkin error, tapi biarkan jika konten tetap loading
                     }
                 } catch (e) {
                     console.warn('Cannot access iframe content (cross-origin)');
@@ -885,15 +872,8 @@
             console.log(`✅ Pages loaded: ${pagesData.length} rows`);
             console.log(`✅ Klik areas loaded: ${klikData.length} rows`);
             
-            // Debug: Tampilkan kolom yang tersedia
             if (pagesData.length > 0) {
                 console.log('📊 Kolom yang tersedia di sheet page:', Object.keys(pagesData[0]));
-            }
-            
-            if (klikData.length > 0) {
-                console.log('📊 Sample klik data:', klikData[0]);
-            } else {
-                console.warn('⚠️ Tidak ada data di sheet klik!');
             }
             
             if (pagesData.length === 0) {
@@ -1018,7 +998,6 @@
             return;
         }
         
-        // Filter area untuk page ini DAN area ALL
         const areasForPage = klikData.filter(area => {
             const isActive = String(area.is_active || '').toUpperCase();
             const isValidActive = isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
@@ -1141,14 +1120,15 @@
     }
     
     // ============================================================
-    // FUNGSI RENDER HALAMAN DENGAN SUB PAGES
-    // Menggunakan kolom K (menu_type) dan kolom L (parent_id)
+    // FUNGSI RENDER HALAMAN
+    // Sub menu hanya untuk top navigation (menu atas)
+    // Sidebar tetap sederhana tanpa sub menu
     // ============================================================
     
-    function buildSidebarHierarchy() {
-        // Ambil semua menu sidebar yang aktif (is_active_sidebar = TRUE)
-        const sideMenus = pagesData.filter(p => {
-            const isActive = String(p.is_active_sidebar || '').toUpperCase();
+    function buildTopMenuHierarchy() {
+        // Ambil semua menu top yang aktif
+        const topMenus = pagesData.filter(p => {
+            const isActive = String(p.is_active_top || '').toUpperCase();
             return isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
         }).sort((a,b) => {
             const orderA = parseInt(a.order) || 0;
@@ -1156,26 +1136,23 @@
             return orderA - orderB;
         });
         
-        // Pisahkan parent dan child berdasarkan kolom K (menu_type) dan kolom L (parent_id)
-        // Kolom K: jika berisi "SUB" maka dia adalah sub halaman
-        // Kolom L: berisi page_id dari induknya
+        // Pisahkan parent dan child berdasarkan kolom menu_type dan parent_id
         const parents = [];
         const children = {};
         
-        sideMenus.forEach(menu => {
+        topMenus.forEach(menu => {
             const menuType = String(menu.menu_type || '').toUpperCase();
             const parentId = menu.parent_id || '';
             
-            // Cek apakah ini sub halaman (menu_type = SUB)
             if (menuType === 'SUB' && parentId !== '') {
-                // Ini adalah child menu
+                // Ini adalah child menu (sub menu)
                 if (!children[parentId]) {
                     children[parentId] = [];
                 }
                 children[parentId].push(menu);
-                console.log(`📌 Child menu: ${menu.label_menu} -> parent: ${parentId}`);
+                console.log(`📌 Sub menu: ${menu.label_menu} -> parent: ${parentId}`);
             } else {
-                // Ini adalah parent menu (menu_type bukan SUB atau kosong)
+                // Ini adalah parent menu
                 parents.push(menu);
                 console.log(`📌 Parent menu: ${menu.label_menu} (${menu.page_id})`);
             }
@@ -1200,8 +1177,9 @@
     }
     
     function renderPage() {
-        const topMenus = pagesData.filter(p => {
-            const isActive = String(p.is_active_top || '').toUpperCase();
+        // Ambil sidebar menus (tanpa sub menu)
+        const sideMenus = pagesData.filter(p => {
+            const isActive = String(p.is_active_sidebar || '').toUpperCase();
             return isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
         }).sort((a,b) => {
             const orderA = parseInt(a.order) || 0;
@@ -1209,7 +1187,13 @@
             return orderA - orderB;
         });
         
-        const { parents, children } = buildSidebarHierarchy();
+        // Filter hanya parent menu untuk sidebar (menu_type bukan SUB)
+        const sidebarParentMenus = sideMenus.filter(menu => {
+            const menuType = String(menu.menu_type || '').toUpperCase();
+            return menuType !== 'SUB';
+        });
+        
+        const { parents: topParents, children: topChildren } = buildTopMenuHierarchy();
         
         const currentPage = pagesData.find(p => p.page_id === currentPageId);
         if (!currentPage) {
@@ -1224,69 +1208,62 @@
         const currentMenuType = String(currentPage.menu_type || '').toUpperCase();
         
         if (currentMenuType === 'SUB') {
-            // Jika current page adalah sub menu, cari parent-nya untuk active top menu
+            // Jika current page adalah sub menu, cari parent-nya
             const parentId = currentPage.parent_id;
             if (parentId) {
-                const parentPage = pagesData.find(p => p.page_id === parentId);
-                if (parentPage && parentPage.parent_menu_id) {
-                    activeTopId = parentPage.parent_menu_id;
-                } else {
-                    activeTopId = 'realisasi';
-                }
-            } else {
-                activeTopId = 'realisasi';
-            }
-        } else {
-            // Parent menu atau menu biasa
-            if (currentPage.parent_menu_id) {
-                activeTopId = currentPage.parent_menu_id;
+                activeTopId = parentId;
             } else {
                 activeTopId = currentPage.page_id;
             }
+        } else {
+            activeTopId = currentPage.page_id;
         }
         
-        // Bangun HTML sidebar dengan hierarki
-        let sidebarHtml = '<div class="pokja-list">';
+        // Bangun HTML top navigation dengan dropdown
+        let topNavHtml = '<div class="page-nav">';
         
-        parents.forEach(parent => {
-            const hasChildren = children[parent.page_id] && children[parent.page_id].length > 0;
-            // Cek apakah parent ini aktif atau salah satu child-nya aktif
-            const isActive = currentPageId === parent.page_id;
-            const isChildActive = hasChildren && children[parent.page_id].some(child => child.page_id === currentPageId);
-            const isExpanded = hasChildren && (isActive || isChildActive);
-            
-            sidebarHtml += `<div class="sidebar-item">`;
-            sidebarHtml += `<div class="pokja-btn ${hasChildren ? 'has-children' : ''} ${isActive ? 'active' : ''} ${isExpanded ? 'expanded' : ''}" 
-                                   data-page="${parent.page_id}" 
-                                   data-has-children="${hasChildren}">
-                                <div class="horizontal-text">${parent.label_menu}</div>
-                            </div>`;
+        topParents.forEach(parent => {
+            const hasChildren = topChildren[parent.page_id] && topChildren[parent.page_id].length > 0;
+            const isActive = activeTopId === parent.page_id;
             
             if (hasChildren) {
-                sidebarHtml += `<div class="submenu-container" id="submenu-${parent.page_id}" style="max-height: ${isChildActive ? '500px' : '0'}">`;
-                children[parent.page_id].forEach(child => {
-                    const isChildActiveNow = currentPageId === child.page_id;
-                    sidebarHtml += `<div class="submenu-btn ${isChildActiveNow ? 'active' : ''}" data-page="${child.page_id}">
-                                        <div class="horizontal-text">${child.label_menu}</div>
-                                    </div>`;
+                // Menu dengan dropdown
+                topNavHtml += `<div class="nav-item has-children">
+                    <a class="${isActive ? 'active' : ''}" data-page="${parent.page_id}">${parent.label_menu}</a>
+                    <div class="dropdown-menu">`;
+                
+                topChildren[parent.page_id].forEach(child => {
+                    topNavHtml += `<a data-page="${child.page_id}">${child.label_menu}</a>`;
                 });
-                sidebarHtml += `</div>`;
+                
+                topNavHtml += `</div></div>`;
+            } else {
+                // Menu biasa tanpa dropdown
+                topNavHtml += `<div class="nav-item">
+                    <a class="${isActive ? 'active' : ''}" data-page="${parent.page_id}">${parent.label_menu}</a>
+                </div>`;
             }
-            
-            sidebarHtml += `</div>`;
+        });
+        
+        topNavHtml += '</div>';
+        
+        // Bangun HTML sidebar (sederhana, tanpa sub menu)
+        let sidebarHtml = '<div class="pokja-list">';
+        
+        sidebarParentMenus.forEach(menu => {
+            const isActive = currentPageId === menu.page_id;
+            sidebarHtml += `
+                <div class="pokja-btn ${isActive ? 'active' : ''}" data-page="${menu.page_id}">
+                    <div class="horizontal-text">${menu.label_menu}</div>
+                </div>
+            `;
         });
         
         sidebarHtml += '</div>';
         
         const html = `
             <div class="nav-section">
-                <div class="page-nav">
-                    ${topMenus.map(menu => `
-                        <a data-page="${menu.page_id}" class="${activeTopId === menu.page_id ? 'active' : ''}">
-                            ${menu.label_menu}
-                        </a>
-                    `).join('')}
-                </div>
+                ${topNavHtml}
             </div>
             <div class="content-row">
                 <div class="image-wrapper">
@@ -1301,7 +1278,7 @@
         
         document.getElementById('app').innerHTML = html;
         
-        // Event handler untuk top menu
+        // Event handler untuk top menu (termasuk dropdown items)
         document.querySelectorAll('.page-nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1314,48 +1291,13 @@
             });
         });
         
-        // Event handler untuk sidebar parent menu
-        document.querySelectorAll('.pokja-btn[data-page]').forEach(btn => {
+        // Event handler untuk sidebar
+        document.querySelectorAll('.pokja-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
-                const pageId = btn.getAttribute('data-page');
-                const hasChildren = btn.getAttribute('data-has-children') === 'true';
-                
-                if (hasChildren) {
-                    // Toggle submenu
-                    const submenu = document.getElementById(`submenu-${pageId}`);
-                    if (submenu) {
-                        const isShowing = submenu.style.maxHeight !== '0px' && submenu.style.maxHeight !== '';
-                        submenu.style.maxHeight = isShowing ? '0' : '500px';
-                        btn.classList.toggle('expanded');
-                    }
-                    
-                    // Set current page ke parent jika belum aktif
-                    const isAlreadyActive = btn.classList.contains('active');
-                    if (!isAlreadyActive) {
-                        currentPageId = pageId;
-                        renderPage();
-                    }
-                } else {
-                    // Tidak memiliki children, langsung pindah halaman
-                    if (pageId) {
-                        console.log(`🔄 Pindah ke halaman (sidebar): ${pageId}`);
-                        currentPageId = pageId;
-                        renderPage();
-                    }
-                }
-            });
-        });
-        
-        // Event handler untuk submenu
-        document.querySelectorAll('.submenu-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
                 const pageId = btn.getAttribute('data-page');
                 if (pageId) {
-                    console.log(`🔄 Pindah ke halaman (submenu): ${pageId}`);
+                    console.log(`🔄 Pindah ke halaman (sidebar): ${pageId}`);
                     currentPageId = pageId;
                     renderPage();
                 }
