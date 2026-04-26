@@ -110,7 +110,7 @@
         }
 
         .pokja-sidebar {
-            width: 45px;
+            width: 70px;
             background: linear-gradient(135deg, #0d3b4f 0%, #0a2e3f 100%);
             border-radius: 0 16px 16px 0;
             border-left: 2px solid #00bcd4;
@@ -122,7 +122,11 @@
             display: flex;
             flex-direction: column;
             flex: 1;
-            justify-content: center;
+        }
+
+        .sidebar-item {
+            display: flex;
+            flex-direction: column;
         }
 
         .pokja-btn {
@@ -134,8 +138,27 @@
             text-decoration: none;
             transition: all 0.25s ease;
             cursor: pointer;
-            flex: 1;
-            min-height: 70px;
+            min-height: 65px;
+            position: relative;
+        }
+
+        .pokja-btn.has-children {
+            cursor: pointer;
+            position: relative;
+        }
+
+        .pokja-btn.has-children::after {
+            content: '▼';
+            position: absolute;
+            bottom: 5px;
+            right: 8px;
+            font-size: 10px;
+            transform: rotate(0deg);
+            transition: transform 0.3s ease;
+        }
+
+        .pokja-btn.has-children.expanded::after {
+            transform: rotate(180deg);
         }
 
         .pokja-btn:not(:last-child) {
@@ -149,12 +172,53 @@
 
         .horizontal-text {
             display: inline-block;
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 600;
             letter-spacing: 1px;
             text-transform: uppercase;
             white-space: nowrap;
             transform: rotate(90deg);
+        }
+
+        /* Submenu Styles */
+        .submenu-container {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            max-height: 0;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .submenu-container.show {
+            max-height: 500px;
+        }
+
+        .submenu-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 188, 212, 0.08);
+            color: #b2ebf2;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            cursor: pointer;
+            min-height: 50px;
+            border-left: 3px solid rgba(0, 188, 212, 0.5);
+        }
+
+        .submenu-btn:not(:last-child) {
+            border-bottom: 1px solid rgba(0, 188, 212, 0.2);
+        }
+
+        .submenu-btn:hover, .submenu-btn.active {
+            background: #ffd700;
+            color: #1a3a1a;
+        }
+
+        .submenu-btn .horizontal-text {
+            font-size: 11px;
+            letter-spacing: 0.5px;
         }
 
         .loading {
@@ -306,25 +370,6 @@
             text-align: center;
         }
 
-        .popup-error h3 {
-            margin: 20px 0 10px;
-            color: #333;
-        }
-
-        .popup-error p {
-            color: #666;
-            margin-bottom: 20px;
-        }
-
-        .popup-error button {
-            padding: 10px 20px;
-            background: #1a3a1a;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
         /* Responsive untuk mobile */
         @media (max-width: 768px) {
             .popup-container {
@@ -343,6 +388,22 @@
             .zoom-value {
                 min-width: 45px;
                 font-size: 12px;
+            }
+            
+            .pokja-sidebar {
+                width: 55px;
+            }
+            
+            .pokja-btn {
+                min-height: 55px;
+            }
+            
+            .submenu-btn {
+                min-height: 45px;
+            }
+            
+            .submenu-btn .horizontal-text {
+                font-size: 9px;
             }
         }
     </style>
@@ -824,6 +885,11 @@
             console.log(`✅ Pages loaded: ${pagesData.length} rows`);
             console.log(`✅ Klik areas loaded: ${klikData.length} rows`);
             
+            // Debug: Tampilkan kolom yang tersedia
+            if (pagesData.length > 0) {
+                console.log('📊 Kolom yang tersedia di sheet page:', Object.keys(pagesData[0]));
+            }
+            
             if (klikData.length > 0) {
                 console.log('📊 Sample klik data:', klikData[0]);
             } else {
@@ -1075,8 +1141,49 @@
     }
     
     // ============================================================
-    // FUNGSI RENDER HALAMAN
+    // FUNGSI RENDER HALAMAN DENGAN SUB PAGES
+    // Menggunakan kolom K (menu_type) dan kolom L (parent_id)
     // ============================================================
+    
+    function buildSidebarHierarchy() {
+        // Ambil semua menu sidebar yang aktif (is_active_sidebar = TRUE)
+        const sideMenus = pagesData.filter(p => {
+            const isActive = String(p.is_active_sidebar || '').toUpperCase();
+            return isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
+        }).sort((a,b) => {
+            const orderA = parseInt(a.order) || 0;
+            const orderB = parseInt(b.order) || 0;
+            return orderA - orderB;
+        });
+        
+        // Pisahkan parent dan child berdasarkan kolom K (menu_type) dan kolom L (parent_id)
+        // Kolom K: jika berisi "SUB" maka dia adalah sub halaman
+        // Kolom L: berisi page_id dari induknya
+        const parents = [];
+        const children = {};
+        
+        sideMenus.forEach(menu => {
+            const menuType = String(menu.menu_type || '').toUpperCase();
+            const parentId = menu.parent_id || '';
+            
+            // Cek apakah ini sub halaman (menu_type = SUB)
+            if (menuType === 'SUB' && parentId !== '') {
+                // Ini adalah child menu
+                if (!children[parentId]) {
+                    children[parentId] = [];
+                }
+                children[parentId].push(menu);
+                console.log(`📌 Child menu: ${menu.label_menu} -> parent: ${parentId}`);
+            } else {
+                // Ini adalah parent menu (menu_type bukan SUB atau kosong)
+                parents.push(menu);
+                console.log(`📌 Parent menu: ${menu.label_menu} (${menu.page_id})`);
+            }
+        });
+        
+        return { parents, children };
+    }
+    
     function setSidebarHeight(imgElement) {
         const sidebar = document.getElementById('pokjaSidebar');
         if (sidebar && imgElement && imgElement.clientHeight > 0) {
@@ -1093,8 +1200,16 @@
     }
     
     function renderPage() {
-        const topMenus = pagesData.filter(p => p.is_active_top === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
-        const sideMenus = pagesData.filter(p => p.is_active_sidebar === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
+        const topMenus = pagesData.filter(p => {
+            const isActive = String(p.is_active_top || '').toUpperCase();
+            return isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
+        }).sort((a,b) => {
+            const orderA = parseInt(a.order) || 0;
+            const orderB = parseInt(b.order) || 0;
+            return orderA - orderB;
+        });
+        
+        const { parents, children } = buildSidebarHierarchy();
         
         const currentPage = pagesData.find(p => p.page_id === currentPageId);
         if (!currentPage) {
@@ -1104,19 +1219,64 @@
         
         const imageUrl = getImageUrl(currentPage.image_id || currentPage.image_url);
         
+        // Tentukan active top menu
         let activeTopId = null;
-        if (currentPage.menu_type === 'sidebar') {
-            activeTopId = 'realisasi';
+        const currentMenuType = String(currentPage.menu_type || '').toUpperCase();
+        
+        if (currentMenuType === 'SUB') {
+            // Jika current page adalah sub menu, cari parent-nya untuk active top menu
+            const parentId = currentPage.parent_id;
+            if (parentId) {
+                const parentPage = pagesData.find(p => p.page_id === parentId);
+                if (parentPage && parentPage.parent_menu_id) {
+                    activeTopId = parentPage.parent_menu_id;
+                } else {
+                    activeTopId = 'realisasi';
+                }
+            } else {
+                activeTopId = 'realisasi';
+            }
         } else {
-            activeTopId = currentPage.page_id;
+            // Parent menu atau menu biasa
+            if (currentPage.parent_menu_id) {
+                activeTopId = currentPage.parent_menu_id;
+            } else {
+                activeTopId = currentPage.page_id;
+            }
         }
         
-        let activeSideId = null;
-        if (currentPage.menu_type === 'sidebar') {
-            activeSideId = currentPage.page_id;
-        } else {
-            activeSideId = null;
-        }
+        // Bangun HTML sidebar dengan hierarki
+        let sidebarHtml = '<div class="pokja-list">';
+        
+        parents.forEach(parent => {
+            const hasChildren = children[parent.page_id] && children[parent.page_id].length > 0;
+            // Cek apakah parent ini aktif atau salah satu child-nya aktif
+            const isActive = currentPageId === parent.page_id;
+            const isChildActive = hasChildren && children[parent.page_id].some(child => child.page_id === currentPageId);
+            const isExpanded = hasChildren && (isActive || isChildActive);
+            
+            sidebarHtml += `<div class="sidebar-item">`;
+            sidebarHtml += `<div class="pokja-btn ${hasChildren ? 'has-children' : ''} ${isActive ? 'active' : ''} ${isExpanded ? 'expanded' : ''}" 
+                                   data-page="${parent.page_id}" 
+                                   data-has-children="${hasChildren}">
+                                <div class="horizontal-text">${parent.label_menu}</div>
+                            </div>`;
+            
+            if (hasChildren) {
+                sidebarHtml += `<div class="submenu-container" id="submenu-${parent.page_id}" style="max-height: ${isChildActive ? '500px' : '0'}">`;
+                children[parent.page_id].forEach(child => {
+                    const isChildActiveNow = currentPageId === child.page_id;
+                    sidebarHtml += `<div class="submenu-btn ${isChildActiveNow ? 'active' : ''}" data-page="${child.page_id}">
+                                        <div class="horizontal-text">${child.label_menu}</div>
+                                    </div>`;
+                });
+                sidebarHtml += `</div>`;
+            }
+            
+            sidebarHtml += `</div>`;
+        });
+        
+        sidebarHtml += '</div>';
         
         const html = `
             <div class="nav-section">
@@ -1134,19 +1294,14 @@
                     <map name="dynamicMap" id="dynamicMap"></map>
                 </div>
                 <div class="pokja-sidebar" id="pokjaSidebar">
-                    <div class="pokja-list">
-                        ${sideMenus.map(menu => `
-                            <div class="pokja-btn ${activeSideId === menu.page_id ? 'active' : ''}" data-page="${menu.page_id}">
-                                <div class="horizontal-text">${menu.label_menu}</div>
-                            </div>
-                        `).join('')}
-                    </div>
+                    ${sidebarHtml}
                 </div>
             </div>
         `;
         
         document.getElementById('app').innerHTML = html;
         
+        // Event handler untuk top menu
         document.querySelectorAll('.page-nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1159,12 +1314,48 @@
             });
         });
         
-        document.querySelectorAll('.pokja-btn').forEach(btn => {
+        // Event handler untuk sidebar parent menu
+        document.querySelectorAll('.pokja-btn[data-page]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
+                const pageId = btn.getAttribute('data-page');
+                const hasChildren = btn.getAttribute('data-has-children') === 'true';
+                
+                if (hasChildren) {
+                    // Toggle submenu
+                    const submenu = document.getElementById(`submenu-${pageId}`);
+                    if (submenu) {
+                        const isShowing = submenu.style.maxHeight !== '0px' && submenu.style.maxHeight !== '';
+                        submenu.style.maxHeight = isShowing ? '0' : '500px';
+                        btn.classList.toggle('expanded');
+                    }
+                    
+                    // Set current page ke parent jika belum aktif
+                    const isAlreadyActive = btn.classList.contains('active');
+                    if (!isAlreadyActive) {
+                        currentPageId = pageId;
+                        renderPage();
+                    }
+                } else {
+                    // Tidak memiliki children, langsung pindah halaman
+                    if (pageId) {
+                        console.log(`🔄 Pindah ke halaman (sidebar): ${pageId}`);
+                        currentPageId = pageId;
+                        renderPage();
+                    }
+                }
+            });
+        });
+        
+        // Event handler untuk submenu
+        document.querySelectorAll('.submenu-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const pageId = btn.getAttribute('data-page');
                 if (pageId) {
-                    console.log(`🔄 Pindah ke halaman (sidebar): ${pageId}`);
+                    console.log(`🔄 Pindah ke halaman (submenu): ${pageId}`);
                     currentPageId = pageId;
                     renderPage();
                 }
@@ -1194,16 +1385,21 @@
         }
         
         let resizeTimeout;
-        window.addEventListener('resize', () => {
+        window.removeEventListener('resize', handleResize);
+        window.addEventListener('resize', handleResize);
+        
+        function handleResize() {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
-                if (img && img.clientHeight > 0) {
+                const imgElement = document.getElementById('mainImage');
+                const mapElement = document.getElementById('dynamicMap');
+                if (imgElement && imgElement.clientHeight > 0 && mapElement) {
                     console.log('📱 Resize detected');
-                    createClickableAreas(currentPageId, img, mapEl);
-                    setSidebarHeight(img);
+                    createClickableAreas(currentPageId, imgElement, mapElement);
+                    setSidebarHeight(imgElement);
                 }
             }, 100);
-        });
+        }
     }
     
     // ============================================================
