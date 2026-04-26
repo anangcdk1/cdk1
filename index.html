@@ -68,7 +68,6 @@
             color: #1a3a1a;
         }
 
-        /* Sub menu style */
         .page-nav.sub-nav {
             margin-top: 4px;
             padding-left: 20px;
@@ -344,7 +343,6 @@
             cursor: pointer;
         }
 
-        /* Responsive untuk mobile */
         @media (max-width: 768px) {
             .popup-container {
                 width: 95%;
@@ -382,7 +380,6 @@
         klik: '475336072'
     };
     
-    // Konfigurasi highlight
     const HIGHLIGHT_CONFIG = {
         defaultColor: 'rgba(0, 0, 0, 0.25)',
         borderColor: '#000000'
@@ -395,97 +392,85 @@
     let currentPopup = null;
     
     // ============================================================
-    // FUNGSI KONVERSI URL UNTUK EMBED
+    // FUNGSI CEK JENIS URL - Apakah bisa di-popup atau harus tab baru
     // ============================================================
     
-    function getEmbedUrl(url) {
-        // YouTube - format youtu.be
-        if (url.includes('youtu.be')) {
-            const videoId = url.split('youtu.be/')[1].split('?')[0];
-            return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
-        }
+    function shouldOpenInNewTab(url) {
+        if (!url) return false;
         
-        // YouTube - format youtube.com/watch
-        if (url.includes('youtube.com/watch')) {
-            const urlParams = new URLSearchParams(url.split('?')[1]);
-            const videoId = urlParams.get('v');
-            if (videoId) {
-                return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+        const urlLower = url.toLowerCase();
+        
+        // Website yang HARUS buka di tab baru (tidak bisa di-iframe)
+        const mustNewTabDomains = [
+            'lookerstudio.google.com',
+            'datastudio.google.com',
+            'google.com/maps',
+            'maps.google.com',
+            'facebook.com',
+            'twitter.com',
+            'instagram.com',
+            'tiktok.com',
+            'youtube.com/shorts',
+            'whatsapp.com',
+            'telegram.org',
+            'web.whatsapp.com',
+            'line.me',
+            'spotify.com',
+            'netflix.com',
+            'canva.com',
+            'figma.com',
+            'miro.com',
+            'notion.so',
+            'trello.com',
+            'asana.com',
+            'slack.com',
+            'discord.com',
+            'zoom.us',
+            'meet.google.com',
+            'teams.microsoft.com'
+        ];
+        
+        // Cek apakah URL termasuk domain yang harus buka di tab baru
+        for (const domain of mustNewTabDomains) {
+            if (urlLower.includes(domain)) {
+                console.log(`⚠️ Domain ${domain} - buka di tab baru`);
+                return true;
             }
         }
         
-        // YouTube - format youtube.com/embed (sudah embed)
-        if (url.includes('youtube.com/embed')) {
-            return url;
+        // Looker Studio (deteksi berbagai format)
+        if (urlLower.includes('lookerstudio') || urlLower.includes('datastudio')) {
+            return true;
         }
         
-        // Google Drive File (PDF, gambar, video)
-        if (url.includes('drive.google.com/file')) {
-            const match = url.match(/\/d\/(.+?)(\/|$)/);
-            if (match) {
-                const fileId = match[1];
-                return `https://drive.google.com/file/d/${fileId}/preview`;
+        // Website dengan protokol http/https (umumnya tidak bisa di-iframe)
+        if (urlLower.startsWith('http://') || urlLower.startsWith('https://')) {
+            // Kecuali domain yang dikenal bisa di-iframe
+            const allowedIframeDomains = [
+                'youtube.com/embed',
+                'youtu.be',
+                'drive.google.com',
+                'docs.google.com',
+                'lh3.googleusercontent.com',
+                'googleusercontent.com'
+            ];
+            
+            for (const allowed of allowedIframeDomains) {
+                if (urlLower.includes(allowed)) {
+                    return false;
+                }
             }
+            
+            // Selain domain di atas, buka di tab baru
+            console.log(`⚠️ URL web umum - buka di tab baru: ${url}`);
+            return true;
         }
         
-        // Google Drive open?id= format
-        if (url.includes('drive.google.com/open')) {
-            const fileId = url.split('id=')[1].split('&')[0];
-            if (fileId) {
-                return `https://drive.google.com/file/d/${fileId}/preview`;
-            }
-        }
-        
-        // Google Docs
-        if (url.includes('docs.google.com/document')) {
-            const match = url.match(/\/d\/(.+?)(\/|$)/);
-            if (match) {
-                const docId = match[1];
-                return `https://docs.google.com/document/d/${docId}/preview`;
-            }
-        }
-        
-        // Google Sheets (spreadsheet)
-        if (url.includes('docs.google.com/spreadsheets')) {
-            const match = url.match(/\/d\/(.+?)(\/|$)/);
-            if (match) {
-                const sheetId = match[1];
-                return `https://docs.google.com/spreadsheets/d/${sheetId}/preview`;
-            }
-        }
-        
-        // Google Slides
-        if (url.includes('docs.google.com/presentation')) {
-            const match = url.match(/\/d\/(.+?)(\/|$)/);
-            if (match) {
-                const slideId = match[1];
-                return `https://docs.google.com/presentation/d/${slideId}/preview`;
-            }
-        }
-        
-        // PDF langsung
-        if (url.toLowerCase().endsWith('.pdf')) {
-            return url;
-        }
-        
-        // Gambar
-        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) {
-            return url;
-        }
-        
-        // Default: gunakan URL asli
-        return url;
-    }
-    
-    function getContentType(url) {
-        if (url.includes('youtube.com/embed') || url.includes('youtu.be')) return 'youtube';
-        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) return 'image';
-        if (url.toLowerCase().endsWith('.pdf')) return 'pdf';
-        return 'iframe';
+        return false;
     }
     
     // ============================================================
-    // FUNGSI POPUP
+    // FUNGSI POPUP (hanya untuk konten yang aman)
     // ============================================================
     
     function openPopup(url, title) {
@@ -497,14 +482,12 @@
         console.log(`🔗 Original URL: ${url}`);
         console.log(`🔗 Embed URL: ${embedUrl}`);
         
-        // Buat elemen popup
         const overlay = document.createElement('div');
         overlay.className = 'popup-overlay';
         
         const container = document.createElement('div');
         container.className = 'popup-container';
         
-        // Header
         const header = document.createElement('div');
         header.className = 'popup-header';
         
@@ -515,42 +498,35 @@
         const toolbar = document.createElement('div');
         toolbar.className = 'popup-toolbar';
         
-        // Zoom out button
         const zoomOutBtn = document.createElement('button');
         zoomOutBtn.className = 'popup-btn';
-        zoomOutBtn.innerHTML = '<span class="emoji">🔍</span><span>−</span>';
+        zoomOutBtn.innerHTML = '<span>🔍</span><span>−</span>';
         zoomOutBtn.title = 'Zoom Out (Ctrl + -)';
         
-        // Zoom value display
         const zoomValue = document.createElement('span');
         zoomValue.className = 'zoom-value';
         zoomValue.textContent = '100%';
         
-        // Zoom in button
         const zoomInBtn = document.createElement('button');
         zoomInBtn.className = 'popup-btn';
-        zoomInBtn.innerHTML = '<span class="emoji">🔍</span><span>+</span>';
+        zoomInBtn.innerHTML = '<span>🔍</span><span>+</span>';
         zoomInBtn.title = 'Zoom In (Ctrl + +)';
         
-        // Reset zoom button
         const resetBtn = document.createElement('button');
         resetBtn.className = 'popup-btn';
         resetBtn.innerHTML = '<span>⟳</span><span>100%</span>';
         resetBtn.title = 'Reset Zoom (Ctrl + 0)';
         
-        // Buka di tab baru button
         const newTabBtn = document.createElement('button');
         newTabBtn.className = 'popup-btn';
         newTabBtn.innerHTML = '<span>🔗</span><span>Tab Baru</span>';
         newTabBtn.title = 'Buka di Tab Baru';
         
-        // Fullscreen button
         const fullscreenBtn = document.createElement('button');
         fullscreenBtn.className = 'popup-btn';
         fullscreenBtn.innerHTML = '<span>⤢</span><span>Fullscreen</span>';
         fullscreenBtn.title = 'Fullscreen';
         
-        // Close button
         const closeBtn = document.createElement('button');
         closeBtn.className = 'popup-btn popup-btn-close';
         closeBtn.innerHTML = '<span>✕</span><span>Tutup</span>';
@@ -567,14 +543,12 @@
         header.appendChild(titleSpan);
         header.appendChild(toolbar);
         
-        // Content wrapper
         const contentWrapper = document.createElement('div');
         contentWrapper.className = 'popup-content-wrapper';
         
         const contentDiv = document.createElement('div');
         contentDiv.className = 'popup-content';
         
-        // Tentukan jenis konten
         const contentType = getContentType(embedUrl);
         let contentElement;
         
@@ -585,7 +559,6 @@
             contentElement.style.maxWidth = '100%';
             contentElement.style.height = 'auto';
         } else {
-            // Default: iframe
             contentElement = document.createElement('iframe');
             contentElement.src = embedUrl;
             contentElement.title = title || 'Konten';
@@ -607,7 +580,6 @@
         
         document.body.appendChild(overlay);
         
-        // Simpan referensi
         currentPopup = {
             overlay,
             container,
@@ -619,7 +591,6 @@
             embedUrl: embedUrl
         };
         
-        // Zoom logic
         function updateZoom() {
             const zoom = currentPopup.currentZoom / 100;
             currentPopup.contentDiv.style.transform = `scale(${zoom})`;
@@ -651,7 +622,6 @@
             updateZoom();
         }
         
-        // Event listeners
         zoomInBtn.onclick = zoomIn;
         zoomOutBtn.onclick = zoomOut;
         resetBtn.onclick = resetZoom;
@@ -676,7 +646,6 @@
             if (e.target === overlay) closePopupHandler();
         };
         
-        // Keyboard shortcuts
         const keyboardHandler = (e) => {
             if (!currentPopup) return;
             
@@ -709,20 +678,6 @@
         document.addEventListener('keydown', keyboardHandler);
         currentPopup.keyboardHandler = keyboardHandler;
         
-        // Handle iframe load error
-        if (contentElement.tagName === 'IFRAME') {
-            setTimeout(() => {
-                try {
-                    const iframeDoc = contentElement.contentDocument || contentElement.contentWindow?.document;
-                    if (!iframeDoc || !iframeDoc.body || iframeDoc.body.innerHTML === '') {
-                        // Mungkin error, tapi biarkan jika konten tetap loading
-                    }
-                } catch (e) {
-                    console.warn('Cannot access iframe content (cross-origin)');
-                }
-            }, 3000);
-        }
-        
         updateZoom();
     }
     
@@ -734,6 +689,81 @@
             currentPopup.overlay.remove();
             currentPopup = null;
         }
+    }
+    
+    function getEmbedUrl(url) {
+        if (url.includes('youtu.be')) {
+            const videoId = url.split('youtu.be/')[1].split('?')[0];
+            return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+        }
+        
+        if (url.includes('youtube.com/watch')) {
+            const urlParams = new URLSearchParams(url.split('?')[1]);
+            const videoId = urlParams.get('v');
+            if (videoId) {
+                return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+            }
+        }
+        
+        if (url.includes('youtube.com/embed')) {
+            return url;
+        }
+        
+        if (url.includes('drive.google.com/file')) {
+            const match = url.match(/\/d\/(.+?)(\/|$)/);
+            if (match) {
+                const fileId = match[1];
+                return `https://drive.google.com/file/d/${fileId}/preview`;
+            }
+        }
+        
+        if (url.includes('drive.google.com/open')) {
+            const fileId = url.split('id=')[1].split('&')[0];
+            if (fileId) {
+                return `https://drive.google.com/file/d/${fileId}/preview`;
+            }
+        }
+        
+        if (url.includes('docs.google.com/document')) {
+            const match = url.match(/\/d\/(.+?)(\/|$)/);
+            if (match) {
+                const docId = match[1];
+                return `https://docs.google.com/document/d/${docId}/preview`;
+            }
+        }
+        
+        if (url.includes('docs.google.com/spreadsheets')) {
+            const match = url.match(/\/d\/(.+?)(\/|$)/);
+            if (match) {
+                const sheetId = match[1];
+                return `https://docs.google.com/spreadsheets/d/${sheetId}/preview`;
+            }
+        }
+        
+        if (url.includes('docs.google.com/presentation')) {
+            const match = url.match(/\/d\/(.+?)(\/|$)/);
+            if (match) {
+                const slideId = match[1];
+                return `https://docs.google.com/presentation/d/${slideId}/preview`;
+            }
+        }
+        
+        if (url.toLowerCase().endsWith('.pdf')) {
+            return url;
+        }
+        
+        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) {
+            return url;
+        }
+        
+        return url;
+    }
+    
+    function getContentType(url) {
+        if (url.includes('youtube.com/embed') || url.includes('youtu.be')) return 'youtube';
+        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) return 'image';
+        if (url.toLowerCase().endsWith('.pdf')) return 'pdf';
+        return 'iframe';
     }
     
     // ============================================================
@@ -971,7 +1001,6 @@
             return;
         }
         
-        // Filter area untuk page ini DAN area ALL
         const areasForPage = klikData.filter(area => {
             const isActive = String(area.is_active || '').toUpperCase();
             const isValidActive = isActive === 'TRUE' || isActive === 'YES' || isActive === '1';
@@ -1063,14 +1092,26 @@
                     e.stopPropagation();
                     console.log(`🔘 Diklik: ${area.title} | action: ${actionType || 'internal'} | target: ${target}`);
                     
+                    // Jika action_type = POPUP, cek apakah target bisa di-popup
                     if (actionType === 'POPUP') {
-                        openPopup(target, area.title);
-                    } else if (actionType === 'URL' || target.startsWith('http://') || target.startsWith('https://')) {
+                        // Cek apakah URL harus dibuka di tab baru
+                        if (shouldOpenInNewTab(target)) {
+                            console.log(`📌 POPUP tapi dibuka di tab baru (tidak bisa di-iframe): ${target}`);
+                            window.open(target, '_blank');
+                        } else {
+                            openPopup(target, area.title);
+                        }
+                    } 
+                    // Jika action_type = URL atau target adalah http/https
+                    else if (actionType === 'URL' || target.startsWith('http://') || target.startsWith('https://')) {
                         window.open(target, '_blank');
-                    } else if (pagesData.find(p => p.page_id === target)) {
+                    } 
+                    // Internal navigation
+                    else if (pagesData.find(p => p.page_id === target)) {
                         currentPageId = target;
                         renderPage();
-                    } else {
+                    } 
+                    else {
                         console.warn(`⚠️ Target "${target}" tidak dikenali`);
                         alert(`Target "${target}" tidak valid`);
                     }
@@ -1111,7 +1152,6 @@
         return `https://lh3.googleusercontent.com/d/${imageId}`;
     }
     
-    // Fungsi untuk memisahkan parent dan sub menu berdasarkan order
     function getParentAndSubMenus(menus) {
         const parents = [];
         const subMenus = [];
@@ -1119,10 +1159,8 @@
         menus.forEach(menu => {
             const orderStr = String(menu.order || '');
             if (orderStr.includes('.')) {
-                // Ini adalah sub menu
                 subMenus.push(menu);
             } else {
-                // Ini adalah parent menu
                 parents.push(menu);
             }
         });
@@ -1130,7 +1168,6 @@
         return { parents, subMenus };
     }
     
-    // Fungsi untuk mendapatkan sub menu dari parent tertentu
     function getSubMenusForParent(parentOrder, allSubMenus) {
         return allSubMenus.filter(sub => {
             const orderStr = String(sub.order || '');
@@ -1144,14 +1181,12 @@
     }
     
     function renderPage() {
-        // Filter dan sortir semua top menu
         const allTopMenus = pagesData.filter(p => p.is_active_top === 'TRUE').sort((a, b) => {
             const aOrder = parseFloat(a.order || 0);
             const bOrder = parseFloat(b.order || 0);
             return aOrder - bOrder;
         });
         
-        // Pisahkan parent dan sub menu
         const { parents: parentMenus, subMenus: allSubMenus } = getParentAndSubMenus(allTopMenus);
         
         const sideMenus = pagesData.filter(p => p.is_active_sidebar === 'TRUE').sort((a,b) => parseInt(a.order) - parseInt(b.order));
@@ -1164,27 +1199,18 @@
         
         const imageUrl = getImageUrl(currentPage.image_id || currentPage.image_url);
         
-        // ============================================================
-        // MENENTUKAN ACTIVE TOP ID (menghapus hardcode 'realisasi')
-        // ============================================================
         let activeTopId = null;
-        
         if (currentPage.menu_type === 'sidebar') {
-            // Untuk sidebar: gunakan kolom active_top_id dari sheet
             activeTopId = currentPage.active_top_id || null;
         } else {
-            // Untuk top menu: aktifkan dirinya sendiri
             activeTopId = currentPage.page_id;
         }
         
-        // Cari parent menu yang aktif (untuk sub menu)
         let activeParentOrder = null;
         let activeParentId = null;
         
-        // Cek apakah currentPage adalah parent
         const isCurrentPageParent = parentMenus.some(p => p.page_id === currentPageId);
         
-        // Cek apakah currentPage adalah sub menu
         const currentPageOrder = parseFloat(currentPage.order || 0);
         if (!isCurrentPageParent && !isNaN(currentPageOrder) && String(currentPage.order || '').includes('.')) {
             activeParentOrder = parseInt(String(currentPage.order).split('.')[0]);
@@ -1197,13 +1223,11 @@
             activeParentId = currentPage.page_id;
         }
         
-        // Dapatkan sub menu untuk parent yang aktif
         let activeSubMenus = [];
         if (activeParentOrder !== null) {
             activeSubMenus = getSubMenusForParent(activeParentOrder, allSubMenus);
         }
         
-        // Tentukan active sub menu
         let activeSubId = null;
         if (currentPage.menu_type === 'top' && String(currentPage.order || '').includes('.')) {
             activeSubId = currentPage.page_id;
@@ -1216,7 +1240,6 @@
             activeSideId = null;
         }
         
-        // Build HTML untuk top navigation (parent + sub)
         let topNavHtml = `
             <div class="nav-section">
                 <div class="page-nav">
@@ -1228,7 +1251,6 @@
                 </div>
         `;
         
-        // Tambahkan sub menu jika ada
         if (activeSubMenus.length > 0) {
             topNavHtml += `
                 <div class="page-nav sub-nav">
@@ -1264,7 +1286,6 @@
         
         document.getElementById('app').innerHTML = html;
         
-        // Event listener untuk top menu (parent)
         document.querySelectorAll('.page-nav:not(.sub-nav) a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1277,7 +1298,6 @@
             });
         });
         
-        // Event listener untuk sub menu
         document.querySelectorAll('.page-nav.sub-nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1290,7 +1310,6 @@
             });
         });
         
-        // Event listener untuk sidebar menu
         document.querySelectorAll('.pokja-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
